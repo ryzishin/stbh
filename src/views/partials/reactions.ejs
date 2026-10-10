@@ -1,0 +1,64 @@
+<!-- A reusable reactions row partial. Call with:
+   include('../partials/reactions', { targetType: 'unit', targetId: unit.id, initial: unit.reactions || { likes: 0, dislikes: 0, mine: null } }) -->
+<div class="reactions-row" data-target-type="<%= targetType %>" data-target-id="<%= targetId %>">
+  <button type="button" class="reaction-btn like <%= initial.mine === 'like' ? 'active' : '' %>" data-kind="like" aria-label="Like">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+    <span class="reaction-count"><%= initial.likes || 0 %></span>
+  </button>
+  <button type="button" class="reaction-btn dislike <%= initial.mine === 'dislike' ? 'active' : '' %>" data-kind="dislike" aria-label="Dislike">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>
+    <span class="reaction-count"><%= initial.dislikes || 0 %></span>
+  </button>
+</div>
+
+<script>
+  // Wire up all reaction rows on the page once.
+  (function () {
+    if (window.__reactionsWired) return;
+    window.__reactionsWired = true;
+
+    function updateRow(row, data) {
+      const likeBtn = row.querySelector('.reaction-btn.like');
+      const dislikeBtn = row.querySelector('.reaction-btn.dislike');
+      likeBtn.querySelector('.reaction-count').textContent = String(data.likes || 0);
+      dislikeBtn.querySelector('.reaction-count').textContent = String(data.dislikes || 0);
+      likeBtn.classList.toggle('active', data.mine === 'like');
+      dislikeBtn.classList.toggle('active', data.mine === 'dislike');
+    }
+
+    document.addEventListener('click', async (e) => {
+      const btn = e.target.closest('.reaction-btn');
+      if (!btn) return;
+      const row = btn.closest('.reactions-row');
+      if (!row) return;
+      const targetType = row.dataset.targetType;
+      const targetId = row.dataset.targetId;
+      const kind = btn.dataset.kind;
+      const wasActive = btn.classList.contains('active');
+      try {
+        const r = await fetch('/api/reactions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ target_type: targetType, target_id: targetId, kind })
+        }).then(r => r.json());
+        if (r.ok) {
+          updateRow(row, r);
+        } else {
+          toast.error(r.error || 'Could not save your reaction.');
+        }
+      } catch (err) {
+        // Network error — best-effort: just flip the visual.
+        if (wasActive) {
+          btn.classList.remove('active');
+        } else {
+          // toggle visually
+          const other = kind === 'like' ? 'dislike' : 'like';
+          const otherBtn = row.querySelector('.reaction-btn.' + other);
+          otherBtn.classList.remove('active');
+          btn.classList.add('active');
+        }
+        toast.error('Network error — please try again.');
+      }
+    });
+  })();
+</script>

@@ -1,0 +1,58 @@
+<div class="page-head">
+  <p class="kicker admin">Print Password Slips</p>
+  <h1>Print and cut</h1>
+  <p class="muted">Use the browser's print dialog (Cmd/Ctrl+P). Set margins to "Minimum" for best results. Slips are sized to fit two columns.</p>
+</div>
+
+<% if (slips.length === 0) { %>
+  <div class="card empty-state">
+    <p>No slips to print.</p>
+    <p class="muted small">Import accounts from the Accounts page first, then click "Print slips" on the import result.</p>
+    <a href="/admin/accounts" class="btn btn-outline btn-sm mt-1">Back to Accounts</a>
+  </div>
+<% } else { %>
+  <div class="cta-row mb-2 no-print">
+    <button class="btn btn-primary" onclick="window.print()">
+      <%- include('../partials/icon', { name: 'download', size: 16 }) %>
+      <span>Print now (Cmd/Ctrl+P)</span>
+    </button>
+    <a href="/admin/accounts" class="btn btn-outline">
+      <%- include('../partials/icon', { name: 'arrow_left', size: 16 }) %>
+      <span>Back to Accounts</span>
+    </a>
+    <span class="muted small"><%= slips.length %> slip<%= slips.length === 1 ? '' : 's' %></span>
+  </div>
+
+  <div class="slips-print-page">
+    <div class="slips-grid">
+      <% slips.forEach(s => { %>
+        <div class="slip">
+          <div class="slip-brand">STEM Tesla BioHub</div>
+          <div class="slip-name"><%= s.name %></div>
+          <div class="slip-row"><span class="slip-label">UID</span><span class="slip-value"><%= s.uid %></span></div>
+          <div class="slip-row"><span class="slip-label">Username</span><span class="slip-value"><%= s.username %></span></div>
+          <div class="slip-row"><span class="slip-label">Password</span><span class="slip-value"><%= s.password %></span></div>
+          <div class="slip-hint">
+            <% if (s.isLrn) { %>
+              Sign in at stbh.onrender.com with your UID + this password.
+            <% } else { %>
+              Reset this user's password from the Accounts page to generate one.
+            <% } %>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  </div>
+
+  <div class="no-print">
+    <p class="muted small mt-2">Tip: For LRN users, the password shown is the LRN cipher — you can re-derive it anytime via <code class="mono">node scripts/cipher.js &lt;UID&gt;</code>.</p>
+  </div>
+<% } %>
+
+<style>
+  .no-print { }
+  @media print {
+    .no-print { display: none !important; }
+    .page-head { display: none !important; }
+  }
+</style>

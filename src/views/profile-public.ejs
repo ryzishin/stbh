@@ -1,0 +1,93 @@
+<div class="page-head">
+  <p class="kicker">Profile</p>
+  <h1><%= profile.username || profile.name %></h1>
+  <p class="muted">
+    <span class="badge accent"><%= profile.role %></span>
+    <% if (profile.uid) { %> &middot; UID: <%= profile.uid %><% } %>
+  </p>
+</div>
+
+<% if (locals.isOwner) { %>
+  <div class="alert alert-info">
+    This is how your profile looks to your classmates. <a href="/profile">Edit your profile</a> to update it.
+  </div>
+<% } %>
+
+<div class="profile-public-layout">
+  <aside class="card center profile-public-aside">
+    <div class="avatar avatar-xl<%= profile.avatar_url ? ' has-img' : '' %>" style="<%= profile.avatar_url ? '' : 'background: linear-gradient(135deg, oklch(0.65 0.18 '+(profile.avatar_color||152)+'), oklch(0.55 0.16 '+((profile.avatar_color||152)+30)+'));' %>">
+      <% if (profile.avatar_url) { %>
+        <img src="<%= profile.avatar_url %>" alt="<%= profile.username || profile.name %>" />
+      <% } else { %>
+        <%= (profile.username || profile.name || '').split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase() %>
+      <% } %>
+    </div>
+    <h2 class="mt"><%= profile.username || profile.name %></h2>
+    <span class="badge accent"><%= profile.role %></span>
+    <p class="muted small mt-1">Member since <%= new Date(profile.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long' }) %></p>
+
+    <% if (profile.bio) { %>
+      <p class="profile-bio mt-1"><%- profile.bio %></p>
+    <% } %>
+
+    <%
+      const socials = profile.socials || {};
+      const anySocial = socials.facebook || socials.instagram || socials.tiktok;
+    %>
+    <% if (anySocial) { %>
+      <div class="socials-row mt-1">
+        <% if (socials.facebook) { %>
+          <a href="<%= socials.facebook %>" target="_blank" rel="noopener nofollow" class="social-link facebook" title="Facebook">
+            <%- include('partials/icon', { name: 'facebook', size: 18, cls: 'social-icon-facebook' }) %>
+          </a>
+        <% } %>
+        <% if (socials.instagram) { %>
+          <a href="<%= socials.instagram %>" target="_blank" rel="noopener nofollow" class="social-link instagram" title="Instagram">
+            <%- include('partials/icon', { name: 'instagram', size: 18, cls: 'social-icon-instagram' }) %>
+          </a>
+        <% } %>
+        <% if (socials.tiktok) { %>
+          <a href="<%= socials.tiktok %>" target="_blank" rel="noopener nofollow" class="social-link tiktok" title="TikTok">
+            <%- include('partials/icon', { name: 'tiktok', size: 18, cls: 'social-icon-tiktok' }) %>
+          </a>
+        <% } %>
+      </div>
+    <% } %>
+  </aside>
+
+  <section class="card profile-public-main">
+    <h3>Stats</h3>
+    <div class="stat-row">
+      <div class="stat-card">
+        <div class="stat-icon-row"><%- include('partials/icon', { name: 'trophy', size: 22 }) %><div class="stat-val"><%= profile.points || 0 %></div></div>
+        <div class="stat-label">Total points</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon-row"><%- include('partials/icon', { name: 'flame', size: 22 }) %><div class="stat-val"><%= profile.streak_days || 0 %></div></div>
+        <div class="stat-label">Day streak</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon-row"><%- include('partials/icon', { name: 'brain', size: 22 }) %><div class="stat-val"><%= profile.practice_quizzes_taken || 0 %></div></div>
+        <div class="stat-label">Quizzes taken</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon-row"><%- include('partials/icon', { name: 'card', size: 22 }) %><div class="stat-val"><%= profile.flashcards_reviewed || 0 %></div></div>
+        <div class="stat-label">Cards reviewed</div>
+      </div>
+    </div>
+
+    <% if (recentAttempts && recentAttempts.length > 0) { %>
+      <h3 class="mt">Recent practice attempts</h3>
+      <div class="attempts-list">
+        <% recentAttempts.forEach(a => { %>
+          <div class="attempt-row">
+            <div><strong><%= a.title %></strong><div class="muted tiny"><%= new Date(a.taken_at).toLocaleString() %></div></div>
+            <div class="attempt-score"><strong><%= a.score %>/<%= a.total %></strong><div class="muted tiny"><%= a.total > 0 ? Math.round(a.score / a.total * 100) : 0 %>%</div></div>
+          </div>
+        <% }) %>
+      </div>
+    <% } else { %>
+      <p class="muted mt">No practice attempts yet.</p>
+    <% } %>
+  </section>
+</div>

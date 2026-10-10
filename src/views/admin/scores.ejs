@@ -1,0 +1,211 @@
+<div class="page-head">
+  <p class="kicker admin">Scores &amp; History</p>
+  <h1>Official scores &amp; live-test history</h1>
+  <p class="muted">Tap any past session to view its full score breakdown. The currently active session updates in real time as students submit.</p>
+</div>
+
+<% if (activeSession) { %>
+  <div class="card live-banner">
+    <span class="live-pulse"></span>
+    <div>
+      <strong>Live now:</strong> <%= activeSession.quizzes && activeSession.quizzes.title %>
+      <div class="muted small">Started <%= new Date(activeSession.started_at).toLocaleString() %> &middot; <%= activeSession.joined_count %> joined &middot; <%= activeSession.answered_count %> answered this item</div>
+    </div>
+    <button class="btn btn-primary" id="refresh-scores-btn">Refresh</button>
+  </div>
+
+  <div class="card" id="active-scores-card">
+    <div class="card-head">
+      <h3>Live score table</h3>
+      <span class="badge live">Real-time</span>
+    </div>
+    <div id="active-scores-table">
+      <p class="muted small">Loading scores…</p>
+    </div>
+  </div>
+<% } %>
+
+<div class="card">
+  <div class="card-head">
+    <h3>Hosted live tests &mdash; history</h3>
+    <span class="badge"><%= sessions.length %> session<%= sessions.length !== 1 ? 's' : '' %></span>
+  </div>
+  <p class="muted small">Every hosted live test, newest first. Click a row to view the full score breakdown with submission timestamps.</p>
+
+  <% if (sessions.length === 0) { %>
+    <div class="empty-state">
+      <p>No live tests have been hosted yet.</p>
+      <a href="/admin/host-live" class="btn btn-primary mt-1">Host your first live test</a>
+    </div>
+  <% } else { %>
+    <div class="quiz-list" id="session-history">
+      <% sessions.forEach(s => { %>
+        <div class="quiz-list-row session-row" data-session-id="<%= s.id %>" style="cursor:pointer">
+          <div>
+            <strong><%= s.quiz?.title || 'Untitled test' %></strong>
+            <div class="muted small">
+              <span class="badge <%= s.status === 'active' ? 'live' : '' %>"><%= s.status %></span>
+              Started <%= new Date(s.started_at).toLocaleString() %>
+              <% if (s.ended_at) { %>
+                &middot; ended <%= new Date(s.ended_at).toLocaleString() %>
+                &middot; <%= Math.round((new Date(s.ended_at).getTime() - new Date(s.started_at).getTime()) / 1000 / 60 * 10) / 10 %> min
+              <% } else { %>
+                &middot; in progress
+              <% } %>
+            </div>
+          </div>
+          <button class="btn btn-sm btn-outline view-scores-btn" data-session-id="<%= s.id %>">View scores</button>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+</div>
+
+<!-- Modal for viewing a session's scores -->
+<div class="modal-backdrop hidden" id="scores-modal-backdrop">
+  <div class="modal" id="scores-modal" role="dialog" aria-modal="true" aria-labelledby="scores-modal-title">
+    <div class="modal-head">
+      <h3 id="scores-modal-title">Session scores</h3>
+      <button type="button" class="icon-btn" id="scores-modal-close" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="scores-modal-body">
+      <p class="muted small">Loading…</p>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-outline" id="scores-modal-close-2">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Real-time socket: refresh the active score table on submission.
+  const socket = io({ auth: { userId: '<%= user.id %>' } });
+
+  async function loadActiveScores() {
+    <% if (activeSession) { %>
+    const sessionId = '<%= activeSession.id %>';
+    const tbody = document.getElementById('active-scores-table');
+    if (!tbody) return;
+    tbody.innerHTML = '<p class="muted small">Loading scores…</p>';
+    try {
+      const r = await fetch(`/api/admin/sessions/${sessionId}/scores`).then(r => r.json());
+      if (!r.ok) { tbody.innerHTML = '<p class="muted small">Failed to load.</p>'; return; }
+      if (!r.rows || r.rows.length === 0) {
+        tbody.innerHTML = '<p class="muted small">No students have submitted yet.</p>';
+        return;
+      }
+      const totalPossible = r.session.total_possible || 0;
+      tbody.innerHTML = `
+        <div class="muted small mb-1">Total possible: <strong>${totalPossible}</strong> &middot; Quiz: ${escapeHtml(r.session.quiz_title)}</div>
+        <div class="participant-list">
+          ${r.rows.map(row => `
+            <div class="participant-row">
+              <div class="avatar avatar-sm" style="background: linear-gradient(135deg, oklch(0.65 0.18 ${row.avatar_color}), oklch(0.55 0.16 ${row.avatar_color + 30}));">${initials(row.name)}</div>
+              <div class="flex-1">
+                <strong>${escapeHtml(row.name)}</strong>
+                <div class="muted small">
+                  <span class="badge ${row.status === 'submitted' ? 'correct' : ''}">${row.status}</span>
+                  ${row.uid ? `<span class="tiny">UID: ${escapeHtml(row.uid)}</span>` : ''}
+                  ${row.warnings > 0 ? `<span class="badge warn">${row.warnings} warn</span>` : ''}
+                  ${row.answers_submitted ? `<span class="tiny">${row.answers_submitted} answer${row.answers_submitted !== 1 ? 's' : ''}</span>` : ''}
+                </div>
+              </div>
+              <div class="text-center" style="min-width:96px">
+                <div class="strong"><%= '' %><span class="score-val">${row.score}</span> / ${totalPossible}</div>
+                <div class="muted tiny">${totalPossible > 0 ? Math.round(row.score / totalPossible * 100) : 0}%</div>
+              </div>
+              <div class="text-center" style="min-width:120px">
+                ${row.submitted_at ? `<div class="muted tiny">submitted ${new Date(row.submitted_at).toLocaleTimeString()}</div>` : ''}
+                ${row.joined_at ? `<div class="muted tiny">joined ${new Date(row.joined_at).toLocaleTimeString()}</div>` : ''}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    } catch (err) {
+      tbody.innerHTML = '<p class="muted small">Network error.</p>';
+    }
+    <% } %>
+  }
+
+  function escapeHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function initials(name) { return String(name||'?').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase(); }
+
+  // Auto-refresh active scores when a submission comes in.
+  socket.on('live:submission', () => loadActiveScores());
+  socket.on('live:participant_joined', () => loadActiveScores());
+  socket.on('live:warning', () => loadActiveScores());
+  socket.on('live:item_changed', () => loadActiveScores());
+  document.getElementById('refresh-scores-btn')?.addEventListener('click', loadActiveScores);
+
+  // Initial load.
+  loadActiveScores();
+  // Periodic refresh as a safety net (in case a socket event is missed).
+  setInterval(loadActiveScores, 8000);
+
+  // ===== Session scores modal =====
+  const modalBackdrop = document.getElementById('scores-modal-backdrop');
+  const modalBody = document.getElementById('scores-modal-body');
+  const modalTitle = document.getElementById('scores-modal-title');
+
+  function openModal() { modalBackdrop.classList.remove('hidden'); }
+  function closeModal() { modalBackdrop.classList.add('hidden'); modalBody.innerHTML = '<p class="muted small">Loading…</p>'; }
+
+  async function viewSessionScores(sessionId, title) {
+    openModal();
+    if (title) modalTitle.textContent = title;
+    modalBody.innerHTML = '<p class="muted small">Loading scores…</p>';
+    try {
+      const r = await fetch(`/api/admin/sessions/${sessionId}/scores`).then(r => r.json());
+      if (!r.ok) { modalBody.innerHTML = `<p class="muted small">${escapeHtml(r.error || 'Failed to load.')}</p>`; return; }
+      if (r.rows.length === 0) {
+        modalBody.innerHTML = '<div class="empty-state"><p>No students participated in this session.</p></div>';
+        return;
+      }
+      const totalPossible = r.session.total_possible || 0;
+      modalTitle.textContent = r.session.quiz_title || 'Session scores';
+      modalBody.innerHTML = `
+        <div class="muted small mb-2">
+          ${r.session.status === 'active' ? '<span class="badge live">live</span>' : '<span class="badge">ended</span>'}
+          Started ${new Date(r.session.started_at).toLocaleString()}
+          ${r.session.ended_at ? `&middot; ended ${new Date(r.session.ended_at).toLocaleString()}` : ''}
+        </div>
+        <div class="participant-list">
+          ${r.rows.map(row => `
+            <div class="participant-row">
+              <div class="avatar avatar-sm" style="background: linear-gradient(135deg, oklch(0.65 0.18 ${row.avatar_color}), oklch(0.55 0.16 ${row.avatar_color + 30}));">${initials(row.name)}</div>
+              <div class="flex-1">
+                <strong>${escapeHtml(row.name)}</strong>
+                <div class="muted small">
+                  <span class="badge ${row.status === 'submitted' ? 'correct' : ''}">${row.status}</span>
+                  ${row.uid ? `<span class="tiny">${escapeHtml(row.uid)}</span>` : ''}
+                  ${row.warnings > 0 ? `<span class="badge warn">${row.warnings} warn</span>` : ''}
+                  ${row.answers_submitted ? `<span class="tiny">${row.answers_submitted} submitted</span>` : ''}
+                </div>
+              </div>
+              <div class="text-center" style="min-width:80px">
+                <div class="strong">${row.score} / ${totalPossible}</div>
+                <div class="muted tiny">${totalPossible > 0 ? Math.round(row.score / totalPossible * 100) : 0}%</div>
+              </div>
+              <div class="text-center" style="min-width:140px">
+                ${row.submitted_at ? `<div class="muted tiny">submitted ${new Date(row.submitted_at).toLocaleString()}</div>` : '<div class="muted tiny">not submitted</div>'}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    } catch (err) {
+      modalBody.innerHTML = '<p class="muted small">Network error.</p>';
+    }
+  }
+
+  document.querySelectorAll('.session-row').forEach(row => {
+    row.addEventListener('click', () => viewSessionScores(row.dataset.sessionId));
+  });
+  document.getElementById('scores-modal-close')?.addEventListener('click', closeModal);
+  document.getElementById('scores-modal-close-2')?.addEventListener('click', closeModal);
+  modalBackdrop?.addEventListener('click', (e) => { if (e.target === modalBackdrop) closeModal(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !modalBackdrop.classList.contains('hidden')) closeModal(); });
+</script>

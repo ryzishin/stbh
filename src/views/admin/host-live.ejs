@@ -1,0 +1,197 @@
+<div class="page-head">
+  <p class="kicker admin">Host Live Test</p>
+  <h1><% if (activeSession) { %>Session in progress<% } else { %>Ready to host<% } %></h1>
+</div>
+
+<% if (activeSession) { %>
+  <div class="card live-banner">
+    <span class="live-pulse"></span>
+    <div>
+      <strong><%= activeSession.quizzes && activeSession.quizzes.title %></strong>
+      <div class="muted small">
+        Item <%= activeSession.current_item_index + 1 %> of <%= activeSession.quizzes && activeSession.quizzes.items ? activeSession.quizzes.items.length : 0 %>
+      </div>
+    </div>
+    <div class="cta-row">
+      <button class="btn btn-primary" id="next-item-btn" data-session="<%= activeSession.id %>">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px" aria-hidden="true"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
+        Next item
+      </button>
+      <button class="btn btn-danger" id="end-session-btn" data-session="<%= activeSession.id %>">
+        <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" style="width:16px;height:16px" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+        End session
+      </button>
+    </div>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-icon-row"><%- include('../partials/icon', { name: 'users', size: 22 }) %><div class="stat-val"><%= activeSession.joined_count %></div></div>
+      <div class="stat-label">Joined</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon-row"><%- include('../partials/icon', { name: 'check_circle', size: 22 }) %><div class="stat-val"><%= activeSession.answered_count %></div></div>
+      <div class="stat-label">Answered this item</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon-row"><%- include('../partials/icon', { name: 'timer', size: 22 }) %><div class="stat-val"><%= activeSession.joined_count - activeSession.answered_count %></div></div>
+      <div class="stat-label">Still answering</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Current item</h3>
+    <% if (activeSession.quizzes && activeSession.quizzes.items) {
+      const item = activeSession.quizzes.items[activeSession.current_item_index];
+      if (item) { %>
+        <p class="strong"><%= item.question %></p>
+        <% if (item.options) { %>
+          <div class="option-list">
+            <% item.options.forEach(o => { %>
+              <div class="option-row <%= o.is_correct ? 'correct' : '' %>">
+                <span><%= o.text %></span>
+                <% if (o.is_correct) { %><span class="badge correct">correct</span><% } %>
+              </div>
+            <% }) %>
+          </div>
+        <% } %>
+        <% if (item.correct_answer) { %>
+          <p class="muted">Answer key: <strong><%= item.correct_answer %></strong></p>
+        <% } %>
+      <% } %>
+    <% } %>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h3>Joined participants (<%= activeSession.participants.length %>)</h3>
+      <span class="badge"><%= activeSession.joined_count %> joined</span>
+    </div>
+    <% if (activeSession.participants.length === 0) { %>
+      <p class="muted small">No students have joined yet. Tell them to open the Live Test page.</p>
+    <% } else { %>
+      <div class="participant-list">
+        <% activeSession.participants.forEach(p => { %>
+          <div class="participant-row">
+            <div class="avatar avatar-sm" style="background: linear-gradient(135deg, oklch(0.65 0.18 <%= p.profiles ? p.profiles.avatar_color : 152 %>), oklch(0.55 0.16 <%= (p.profiles ? p.profiles.avatar_color : 152) + 30 %>));"><%= p.profiles ? (p.profiles.name || '').split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase() : '?' %></div>
+            <div class="flex-1">
+              <strong><%= p.profiles ? p.profiles.name : 'Student' %></strong>
+              <div class="muted small">
+                <% if (p.status === 'submitted') { %><span class="badge correct">answered</span><% } %>
+                <% if (p.status === 'answering') { %><span class="badge">answering…</span><% } %>
+                <% if (p.status === 'joined') { %><span class="badge">just joined</span><% } %>
+                <% if (p.warnings > 0) { %> <span class="badge warn"><%= p.warnings %> warn</span><% } %>
+              </div>
+            </div>
+            <span class="badge accent">Score: <%= p.score %></span>
+          </div>
+        <% }) %>
+      </div>
+    <% } %>
+  </div>
+<% } else { %>
+  <div class="card">
+    <h3>Available live tests</h3>
+    <p class="muted small">Pick a quiz to start a live session. Students will see a "Live test started" notification and can join from the Live Test page.</p>
+    <% if ((liveQuizzes || []).length === 0) { %>
+      <div class="empty-state">
+        <p>No live tests yet.</p>
+        <a href="/admin/live-editor" class="btn btn-primary mt-1">Create a live test</a>
+      </div>
+    <% } else { %>
+      <div class="quiz-list">
+        <% liveQuizzes.forEach(q => { %>
+          <div class="quiz-list-row">
+            <div>
+              <strong><%= q.title %></strong>
+              <div class="muted small"><%= q.items.length %> items &middot; <%= q.time_limit_min || 30 %> min</div>
+            </div>
+            <button class="btn btn-primary start-session-btn" data-quiz-id="<%= q.id %>">
+              <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" style="width:14px;height:14px" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Start
+            </button>
+          </div>
+        <% }) %>
+      </div>
+    <% } %>
+  </div>
+<% } %>
+
+<script>
+  const socket = io({ auth: { userId: '<%= user.id %>' } });
+
+  document.querySelectorAll('.start-session-btn').forEach(b => b.addEventListener('click', async () => {
+    b.disabled = true;
+    try {
+      const r = await fetch('/api/admin/start-session', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quizId: b.dataset.quizId })
+      });
+      if (r.ok) {
+        toast.success('Live test started — students can now join.');
+        setTimeout(() => location.reload(), 800);
+      } else {
+        const d = await r.json().catch(() => ({}));
+        toast.error(d.error || 'Failed to start session.');
+        b.disabled = false;
+      }
+    } catch (err) {
+      toast.error('Network error — please try again.');
+      b.disabled = false;
+    }
+  }));
+
+  const next = document.getElementById('next-item-btn');
+  if (next) next.addEventListener('click', async () => {
+    next.disabled = true;
+    try {
+      const r = await fetch(`/api/admin/advance-item/${next.dataset.session}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      if (r.ok) {
+        toast.success('Advanced to next item.');
+        setTimeout(() => location.reload(), 700);
+      } else {
+        const d = await r.json().catch(() => ({}));
+        toast.error(d.error || 'Failed to advance.');
+        next.disabled = false;
+      }
+    } catch (err) {
+      toast.error('Network error.');
+      next.disabled = false;
+    }
+  });
+
+  const end = document.getElementById('end-session-btn');
+  if (end) end.addEventListener('click', async () => {
+    const ok = await confirmToast({
+      title: 'End this live session?',
+      message: 'Students will be moved out of the test. Their submitted answers so far are saved, but they will not be able to answer further items.',
+      confirmText: 'End session',
+      cancelText: 'Cancel',
+      danger: true,
+    });
+    if (!ok) return;
+    end.disabled = true;
+    try {
+      const r = await fetch(`/api/admin/end-session/${end.dataset.session}`, { method: 'POST' });
+      if (r.ok) {
+        toast.success('Session ended.');
+        setTimeout(() => location.reload(), 700);
+      } else {
+        const d = await r.json().catch(() => ({}));
+        toast.error(d.error || 'Failed to end session.');
+        end.disabled = false;
+      }
+    } catch (err) {
+      toast.error('Network error.');
+      end.disabled = false;
+    }
+  });
+
+  // Live updates — refresh when participants join or submit
+  socket.on('live:submission', () => setTimeout(() => location.reload(), 1200));
+  socket.on('live:participant_joined', () => setTimeout(() => location.reload(), 800));
+  socket.on('live:warning', () => setTimeout(() => location.reload(), 1500));
+</script>

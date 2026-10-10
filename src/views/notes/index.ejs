@@ -1,0 +1,31 @@
+<div class="page-head">
+  <p class="kicker">Notes Library</p>
+  <h1>Biology 2 · Units</h1>
+  <p class="muted">Tap any unit to read. Notes are organized into units and parts.</p>
+</div>
+
+<% if (!units || units.length === 0) { %>
+  <div class="empty-state">
+    <p>No units published yet.</p>
+    <p class="muted small">Check back later — content is added as the quarter progresses.</p>
+  </div>
+<% } else { %>
+  <div class="grid grid-2">
+    <% units.forEach(u => { %>
+      <a href="/notes/<%= u.slug %>" class="card card-link">
+        <div class="card-head">
+          <span class="card-icon-wrap"><%- include('../partials/icon', { name: 'book', size: 22 }) %></span>
+          <div>
+            <span class="card-kicker">Unit <%= u.number %></span>
+            <h3><%= u.title %></h3>
+          </div>
+        </div>
+        <p class="muted"><%= u.description %></p>
+        <div class="card-meta">
+          <span><%- include('../partials/icon', { name: 'book', size: 13 }) %> <%= u.parts.length %> part<%= u.parts.length !== 1 ? 's' : '' %></span>
+          <span>&middot; Updated <%= u.updated_at %></span>
+        </div>
+      </a>
+    <% }) %>
+  </div>
+<% } %>

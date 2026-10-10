@@ -1,0 +1,92 @@
+<div class="page-head">
+  <p class="kicker admin">Live Monitor</p>
+  <h1>Real-time class activity</h1>
+</div>
+
+<% if (activeSession) { %>
+  <div class="card live-banner">
+    <span class="live-pulse"></span>
+    <div>
+      <strong><%= activeSession.quizzes && activeSession.quizzes.title %></strong>
+      <div class="muted small">
+        Item <%= activeSession.current_item_index + 1 %> of <%= activeSession.quizzes && activeSession.quizzes.items ? activeSession.quizzes.items.length : 0 %>
+        &middot; <strong><%= activeSession.joined_count %></strong> joined
+        &middot; <strong><%= activeSession.answered_count %></strong> answered
+      </div>
+    </div>
+    <a href="/admin/scores" class="btn btn-outline btn-sm">View scores</a>
+  </div>
+<% } else { %>
+  <div class="card">No active live session. <a href="/admin/host-live">Host one now</a>.</div>
+<% } %>
+
+<div class="grid grid-2">
+  <div class="card">
+    <div class="card-head">
+      <h3>Joined participants <% if (activeSession) { %>(<%= activeSession.participants.length %>)<% } %></h3>
+    </div>
+    <% if (!activeSession || activeSession.participants.length === 0) { %>
+      <p class="muted small">
+        <% if (activeSession) { %>No students have joined yet.<% } else { %>Start a session from <a href="/admin/host-live">Host Live Test</a>.<% } %>
+      </p>
+    <% } else { %>
+      <div class="participant-list">
+        <% activeSession.participants.forEach(p => { %>
+          <div class="participant-row">
+            <div class="avatar avatar-sm" style="background: linear-gradient(135deg, oklch(0.65 0.18 <%= p.profiles ? p.profiles.avatar_color : 152 %>), oklch(0.55 0.16 <%= (p.profiles ? p.profiles.avatar_color : 152) + 30 %>));"><%= p.profiles ? (p.profiles.name || '').split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase() : '?' %></div>
+            <div class="flex-1">
+              <strong><%= p.profiles ? p.profiles.name : 'Student' %></strong>
+              <div class="muted small">
+                <% if (p.status === 'submitted') { %><span class="badge correct">answered</span><% } %>
+                <% if (p.status === 'answering') { %><span class="badge">answering…</span><% } %>
+                <% if (p.status === 'joined') { %><span class="badge">just joined</span><% } %>
+                <% if (p.status === 'kicked') { %><span class="badge warn">removed</span><% } %>
+              </div>
+            </div>
+            <% if (p.warnings > 0) { %><span class="badge warn"><%= p.warnings %></span><% } %>
+            <% if (p.status !== 'kicked') { %><span class="badge accent">Score: <%= p.score %></span><% } %>
+          </div>
+        <% }) %>
+      </div>
+    <% } %>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h3>Live activity feed</h3>
+      <span class="badge live">Real-time</span>
+    </div>
+    <% if (!activity || activity.length === 0) { %>
+      <p class="muted small">No recent activity. Activity appears here as students sign in, view notes, take quizzes, and submit live-test answers.</p>
+    <% } else { %>
+      <div class="activity-list">
+        <% activity.forEach(ev => { %>
+          <div class="activity-row">
+            <span class="activity-kind kind-<%= ev.kind %>"><%= ev.kind.replace(/_/g, ' ') %></span>
+            <strong><%= ev.user_name %></strong>
+            <span class="muted small"><%= new Date(ev.created_at).toLocaleString() %></span>
+          </div>
+        <% }) %>
+      </div>
+    <% } %>
+  </div>
+</div>
+
+<script>
+  // Real-time updates via Socket.IO
+  const socket = io({ auth: { userId: '<%= user.id %>' } });
+  socket.emit('admin:subscribe_live');
+  socket.on('activity:event', (ev) => {
+    const list = document.querySelector('.activity-list');
+    if (!list) return;
+    const row = document.createElement('div');
+    row.className = 'activity-row';
+    row.innerHTML = `<span class="activity-kind kind-${ev.kind}">${ev.kind.replace(/_/g, ' ')}</span><strong>${escapeHtml(ev.userName)}</strong><span class="muted small">just now</span>`;
+    list.prepend(row);
+  });
+  socket.on('live:participant_joined', () => setTimeout(() => location.reload(), 800));
+  socket.on('live:submission', () => setTimeout(() => location.reload(), 1200));
+  socket.on('live:warning', () => setTimeout(() => location.reload(), 1500));
+
+  function escapeHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+</script>

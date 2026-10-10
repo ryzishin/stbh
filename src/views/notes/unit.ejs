@@ -1,0 +1,130 @@
+<a href="/notes" class="back-link">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+  All units
+</a>
+<div class="page-head">
+  <div class="unit-head">
+    <span class="card-icon-wrap big"><%- include('../partials/icon', { name: 'book', size: 32 }) %></span>
+    <div>
+      <p class="kicker">Unit <%= unit.number %></p>
+      <h1><%= unit.title %></h1>
+    </div>
+  </div>
+  <p class="muted"><%= unit.description %></p>
+  <div class="card-meta">Updated <%= unit.updated_at %> &middot; <%= unit.parts.length %> part<%= unit.parts.length !== 1 ? 's' : '' %></div>
+</div>
+
+<% if (unit.parts && unit.parts.length > 0) { %>
+  <div class="grid grid-2">
+    <% unit.parts.forEach((p, i) => { %>
+      <a href="#part-<%= p.id %>" class="card card-link">
+        <span class="card-kicker">Part <%= i + 1 %></span>
+        <h3><%= p.title %></h3>
+        <%
+          const firstPara = p.blocks.find(b => b.kind === 'paragraph');
+          if (firstPara) {
+        %>
+          <p class="muted"><%= (firstPara.text || '').slice(0, 140) %>…</p>
+        <% } %>
+      </a>
+    <% }) %>
+  </div>
+
+  <% unit.parts.forEach((p, i) => { %>
+    <article id="part-<%= p.id %>" class="note-part" data-part-id="<%= p.id %>" data-part-title="<%= p.title %>">
+      <p class="kicker">Part <%= i + 1 %></p>
+      <h2>
+        <%= p.title %>
+        <button type="button" class="copy-link-btn" data-part-id="<%= p.id %>" title="Copy link to this section" aria-label="Copy link to this section">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        </button>
+      </h2>
+      <div class="note-content">
+        <% p.blocks.forEach(b => { %>
+          <% if (b.kind === 'heading') { %>
+            <h<%= b.level || 2 %>><%= b.text %></h<%= b.level || 2 %>>
+          <% } else if (b.kind === 'paragraph') { %>
+            <p><%= b.text %></p>
+          <% } else if (b.kind === 'bullet') { %>
+            <ul><% (b.items || []).forEach(it => { %><li><%= it %></li><% }) %></ul>
+          <% } else if (b.kind === 'numbered') { %>
+            <ol><% (b.items || []).forEach(it => { %><li><%= it %></li><% }) %></ol>
+          <% } else if (b.kind === 'image') { %>
+            <figure><img src="<%= b.url %>" alt="<%= b.caption || '' %>" /><% if (b.caption) { %><figcaption><%= b.caption %></figcaption><% } %></figure>
+          <% } else if (b.kind === 'divider') { %>
+            <hr />
+          <% } else if (b.kind === 'callout') { %>
+            <div class="callout callout-<%= b.variant || 'info' %>"><%= b.text %></div>
+          <% } %>
+        <% }) %>
+      </div>
+    </article>
+  <% }) %>
+
+  <%- include('../partials/reactions', { targetType: 'unit', targetId: unit.id || unit.slug, initial: unit.reactions || { likes: 0, dislikes: 0, mine: null } }) %>
+<% } else { %>
+  <div class="empty-state">
+    <p>This unit doesn't have any content yet.</p>
+    <p class="muted small">Check back later — your teacher is still adding parts.</p>
+  </div>
+<% } %>
+
+<script>
+  // ===== Shareable notes URLs =====
+  // Update the URL hash as the user scrolls through parts, so the address bar
+  // always reflects the section they're reading. On first load, scroll to the
+  // hash in the URL (if any). Also wire the "copy link" buttons.
+  (function () {
+    const parts = Array.from(document.querySelectorAll('.note-part[data-part-id]'));
+    if (parts.length === 0) return;
+
+    // On load: scroll to hash if present.
+    if (location.hash) {
+      const target = document.getElementById(location.hash.slice(1));
+      if (target) setTimeout(() => target.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+    }
+
+    // Scroll spy: update hash when the topmost visible part changes.
+    let currentPartId = null;
+    const observer = new IntersectionObserver((entries) => {
+      // Pick the topmost intersecting entry.
+      const visible = entries
+        .filter(e => e.isIntersecting)
+        .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+      if (visible.length === 0) return;
+      const top = visible[0].target;
+      const newId = top.dataset.partId;
+      if (newId && newId !== currentPartId) {
+        currentPartId = newId;
+        const newHash = `#part-${newId}`;
+        if (location.hash !== newHash) {
+          history.replaceState(null, '', newHash);
+        }
+      }
+    }, { rootMargin: '-15% 0px -65% 0px', threshold: 0 });
+    parts.forEach(p => observer.observe(p));
+
+    // Copy-link buttons.
+    document.querySelectorAll('.copy-link-btn[data-part-id]').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const partId = btn.dataset.partId;
+        const url = `${location.origin}${location.pathname}#part-${partId}`;
+        try {
+          await navigator.clipboard.writeText(url);
+          toast.success('Link copied to clipboard.');
+        } catch {
+          // Fallback: select the URL in a hidden input.
+          const input = document.createElement('input');
+          input.value = url;
+          document.body.appendChild(input);
+          input.select();
+          try { document.execCommand('copy'); toast.success('Link copied.'); }
+          catch { toast.error('Copy failed — copy the URL from the address bar.'); }
+          input.remove();
+        }
+      });
+    });
+  })();
+</script>

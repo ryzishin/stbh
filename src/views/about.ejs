@@ -1,0 +1,94 @@
+<header class="site-header">
+  <div class="container header-inner">
+    <a href="/" class="brand">
+      <img src="/assets/stem-logo.png" alt="STEM logo" class="brand-logo-img" />
+      <div class="brand-text-stack">
+        <span class="brand-text">STEM Tesla <strong>BioHub</strong></span>
+        <span class="brand-sub">Dangcagan National High School</span>
+      </div>
+    </a>
+    <nav class="site-nav">
+      <a href="/" class="nav-link">Home</a>
+      <a href="/about" class="nav-link active">About</a>
+      <a href="/login" class="nav-cta">Sign in</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container narrow about-page">
+  <p class="kicker">About BioHub</p>
+  <h1 class="section-title">Biology 2, all in one place.</h1>
+  <p class="muted">Dangcagan National High School &middot; STEM Tesla &middot; Biology 2 &middot; SY 2026&ndash;2027</p>
+
+  <p class="lead">BioHub is the study hub for Tesla STEM Biology 2. It brings together the materials the class uses throughout the year &mdash; organized notes, practice quizzes, flashcards, and live tests &mdash; in a single place that works on any device. The interface is dark, mobile-first, and tuned for long study sessions without eye strain. Every interaction is fast, keyboard-friendly, and works smoothly on older phones and slow connections.</p>
+
+  <p>BioHub was designed around how Biology 2 actually runs: organized notes that map to the unit structure your teacher follows, practice quizzes that randomize items and options on every attempt so repeated practice builds fluency (not memorization), flashcards tuned for quick review between classes, and live tests that let your teacher run a real-time quiz with the whole section. The interface is distraction-free, your progress is preserved if you accidentally refresh, and every submission is recorded with a timestamp.</p>
+
+  <div class="about-features">
+    <article class="about-feature">
+      <span class="about-feature-icon"><%- include('partials/icon', { name: 'book', size: 24 }) %></span>
+      <h2>Notes</h2>
+      <p>Units and parts built from a block editor: paragraphs, headings, bullet and numbered lists, images, dividers, and callouts. The notes library grows as the quarter progresses. Filter by unit so you can focus on what is coming up next.</p>
+    </article>
+
+    <article class="about-feature">
+      <span class="about-feature-icon"><%- include('partials/icon', { name: 'brain', size: 24 }) %></span>
+      <h2>Practice quizzes</h2>
+      <p>Unlimited retries with randomized items and options, instant scoring, per-item explanations so you can see why an answer is correct, and per-question images for diagrams. Per-quiz points and a streak bonus reward consistency.</p>
+    </article>
+
+    <article class="about-feature">
+      <span class="about-feature-icon"><%- include('partials/icon', { name: 'card', size: 24 }) %></span>
+      <h2>Flashcards</h2>
+      <p>Flip-card review with per-card scoring. Filter by unit so you can focus on what is coming up next. Bulk-add from a single paste for fast setup. Cards reviewed earn points (configurable in Admin → Settings).</p>
+    </article>
+
+    <article class="about-feature">
+      <span class="about-feature-icon"><%- include('partials/icon', { name: 'broadcast', size: 24 }) %></span>
+      <h2>Live tests</h2>
+      <p>The teacher hosts a quiz and the class answers in real time. The interface is distraction-free, your in-progress answer is preserved if you accidentally refresh, and your submission is recorded with a timestamp. Anti-cheat protections keep the test fair.</p>
+    </article>
+
+    <article class="about-feature">
+      <span class="about-feature-icon"><%- include('partials/icon', { name: 'trophy', size: 24 }) %></span>
+      <h2>Streaks &amp; leaderboard</h2>
+      <p>Daily streaks reward consistency, and the weekly leaderboard resets every Monday so everyone starts fresh. An all-time leaderboard keeps the long view. Classmates profiles show stats &mdash; see how everyone in the class is doing.</p>
+    </article>
+
+    <article class="about-feature">
+      <span class="about-feature-icon"><%- include('partials/icon', { name: 'shield_check', size: 24 }) %></span>
+      <h2>Installable &amp; offline</h2>
+      <p>Add BioHub to your phone or laptop home screen for a full-screen, app-like experience. A service worker caches the app shell so even on a flaky connection you can keep studying without interruption.</p>
+    </article>
+  </div>
+
+  <h2 class="section-title">How accounts work</h2>
+  <p>Accounts are issued by your teacher. Students sign in with their LRN; advisers use an assigned identifier. If you forget your password, your teacher can reset it &mdash; your progress and history are preserved. There is no self-signup: only verified Biology 2 students and teachers can access the hub.</p>
+
+  <h2 class="section-title">Profiles &amp; socials</h2>
+  <p>Every account has a profile page. You can set a short bio (up to 101 characters), an optional display name, an avatar photo, and optional links to your Facebook, Instagram, or TikTok. Your profile is viewable by anyone in the class &mdash; from Classmates, the leaderboard, or the live-test monitor &mdash; so your classmates can see your stats, streak, and bio. Points, streak, attempts, and live-test scores are tied to your account; sensitive data like your password hash never leaves the server.</p>
+
+  <h2 class="section-title">Progress &amp; privacy</h2>
+  <p>The hub is built for the Biology 2 class only &mdash; it is not a public platform. Activity that affects the leaderboard or live-test results is logged with a timestamp so the teacher can review submissions. Your password is bcrypt-hashed (never stored in plain text). Profile responses from the server strip password hashes, emails, and password-change flags before reaching the browser.</p>
+
+  <div class="cta-row">
+    <a href="/login" class="btn btn-primary">
+      <%- include('partials/icon', { name: 'lock', size: 16 }) %>
+      <span>Sign in</span>
+    </a>
+    <a href="/" class="btn btn-outline">Back to home</a>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="container footer-inner">
+    <div class="brand">
+      <img src="/assets/stem-logo.png" alt="STEM logo" class="brand-logo-img" />
+      <div>
+        <div class="brand-text">STEM Tesla BioHub</div>
+        <div class="footer-meta">Dangcagan National High School &middot; Biology 2 &middot; SY 2026&ndash;2027</div>
+      </div>
+    </div>
+    <div class="footer-tagline">Explore. Practice. Apply. Discover Biology.</div>
+  </div>
+</footer>

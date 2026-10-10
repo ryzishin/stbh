@@ -1,0 +1,455 @@
+<div class="page-head">
+  <p class="kicker admin">Accounts</p>
+  <h1>Manage student &amp; admin accounts</h1>
+  <p class="muted">Import accounts from a CSV file, reset forgotten passwords, add or remove accounts. Existing UIDs are skipped so re-importing the same file is safe.</p>
+</div>
+
+<div class="card accounts-panel">
+  <div class="card-head">
+    <h3>Quick actions</h3>
+    <span class="badge"><%= accounts.length %> accounts</span>
+  </div>
+  <div class="cta-row">
+    <button class="btn btn-primary" id="open-csv-btn">
+      <%- include('../partials/icon', { name: 'upload', size: 16 }) %>
+      <span>Import from CSV</span>
+    </button>
+    <button class="btn btn-outline" id="open-add-account-btn">
+      <%- include('../partials/icon', { name: 'plus', size: 16 }) %>
+      <span>Add single account</span>
+    </button>
+    <a href="/admin" class="btn btn-ghost">
+      <%- include('../partials/icon', { name: 'arrow_left', size: 16 }) %>
+      <span>Back to dashboard</span>
+    </a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h3>Roster</h3>
+    <input type="search" class="search" id="accounts-search" placeholder="Filter by name, UID, or role…" />
+  </div>
+  <div class="accounts-table-wrap">
+    <table class="accounts-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>UID</th>
+          <th>Role</th>
+          <th>Streak</th>
+          <th>Points</th>
+          <th>Last active</th>
+          <th class="text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="accounts-tbody">
+        <% accounts.forEach(p => { %>
+          <tr data-user-id="<%= p._id %>" data-name="<%= (p.username || p.name || '').toLowerCase() %>" data-uid="<%= (p.uid || '').toLowerCase() %>" data-role="<%= (p.role || '').toLowerCase() %>">
+            <td>
+              <div style="display:flex;align-items:center;gap:0.5rem;">
+                <% const _pUrl = p.avatar_url; const _pInit = (p.username || p.name || '').split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase(); %>
+                <div class="avatar avatar-sm<%= _pUrl ? ' has-img' : '' %>"<%= _pUrl ? '' : ' style="background: linear-gradient(135deg, oklch(0.65 0.18 '+(p.avatar_color||152)+'), oklch(0.55 0.16 '+((p.avatar_color||152)+30)+'));"' %>>
+                  <% if (_pUrl) { %><img src="<%= _pUrl %>" alt="" /><% } else { %><%= _pInit %><% } %>
+                </div>
+                <% if (p.role === 'admin') { %>
+                  <strong><%= p.username || p.name %></strong>
+                <% } else { %>
+                  <a href="/admin/student/<%= p._id %>"><strong><%= p.username || p.name %></strong></a>
+                <% } %>
+              </div>
+            </td>
+            <td class="mono"><%= p.uid %></td>
+            <td>
+              <span class="badge <%= p.role === 'admin' ? 'accent' : p.role === 'subadmin' ? 'accent' : '' %>"><%= p.role %></span>
+            </td>
+            <td><%= p.streak_days || 0 %></td>
+            <td><%= p.points || 0 %></td>
+            <td class="muted small"><%= p.last_active_date || '—' %></td>
+            <td class="row-actions text-right">
+              <% if (p.role !== 'admin') { %>
+                <a href="/admin/student/<%= p._id %>" class="btn btn-sm btn-outline" title="View detail">Detail</a>
+              <% } %>
+              <button class="btn btn-sm btn-outline reset-pwd-btn" data-user-id="<%= p._id %>" data-name="<%= (p.username || p.name || '').replace(/"/g, '&quot;') %>">Reset password</button>
+              <button class="btn btn-sm btn-danger remove-account-btn" data-user-id="<%= p._id %>" data-name="<%= (p.username || p.name || '').replace(/"/g, '&quot;') %>">Remove</button>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% if (accounts.length === 0) { %>
+    <p class="muted center" style="padding: 2rem;">No accounts yet. Click <strong>Import from CSV</strong> to add your roster.</p>
+  <% } %>
+</div>
+
+<!-- CSV import modal -->
+<div id="csv-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="csv-modal-title">
+  <div class="modal-content">
+    <header class="modal-head">
+      <h2 id="csv-modal-title">Import accounts from CSV</h2>
+      <button class="icon-btn" id="csv-close" aria-label="Close"><%- include('../partials/icon', { name: 'x', size: 18 }) %></button>
+    </header>
+    <div class="modal-body">
+      <p class="muted small">CSV format (one account per line, header optional):</p>
+      <pre class="mono small" style="background: var(--bg-soft); padding: 0.75rem; border-radius: var(--radius-sm); overflow-x: auto;">uid,user,name,role
+123456789012,althea,Althea Reyes,student
+123456789013,bianca,Bianca Cruz,student
+ms.roa,ms.roa,Ms. Patricia Roa,admin</pre>
+      <p class="muted small mt-1">LRN (12-digit) users get their LRN cipher as the password. Non-LRN users (admins with custom UIDs) get a random temporary password and must change it on first login.</p>
+
+      <label>CSV file</label>
+      <div class="csv-dropzone" id="csv-dropzone" tabindex="0" role="button" aria-label="Click to choose a CSV file">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <p><strong>Click to choose</strong> a CSV file, or drag and drop one here.</p>
+        <p class="muted tiny" id="csv-file-name"></p>
+      </div>
+      <input type="file" id="csv-file-input" accept=".csv,text/csv,text/plain" hidden />
+
+      <label>Or paste CSV text</label>
+      <textarea id="csv-text-input" rows="6" placeholder="uid,user,name,role&#10;123456789012,althea,Althea Reyes,student"></textarea>
+
+      <p class="muted small" id="csv-preview"></p>
+    </div>
+    <footer class="modal-foot">
+      <button class="btn btn-outline" id="csv-cancel">Cancel</button>
+      <button class="btn btn-primary" id="csv-import">
+        <%- include('../partials/icon', { name: 'upload', size: 16 }) %>
+        <span>Import</span>
+      </button>
+    </footer>
+  </div>
+</div>
+
+<!-- Add single account modal -->
+<div id="add-account-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="add-account-title">
+  <div class="modal-content">
+    <header class="modal-head">
+      <h2 id="add-account-title">Add a single account</h2>
+      <button class="icon-btn" id="add-account-close" aria-label="Close"><%- include('../partials/icon', { name: 'x', size: 18 }) %></button>
+    </header>
+    <div class="modal-body">
+      <label>UID <span class="muted tiny">(LRN for students, any unique identifier for admins)</span></label>
+      <input type="text" id="add-uid" placeholder="123456789012" autocomplete="off" />
+      <div class="form-grid">
+        <div>
+          <label>Username <span class="muted tiny">(unique)</span></label>
+          <input type="text" id="add-username" placeholder="althea" autocomplete="off" />
+        </div>
+        <div>
+          <label>Role</label>
+          <select id="add-role" data-custom>
+            <option value="student">Student</option>
+            <option value="subadmin">Sub-admin</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+      </div>
+      <label>Full name <span class="muted tiny">(optional)</span></label>
+      <input type="text" id="add-name" placeholder="Althea Reyes" autocomplete="off" />
+      <p class="muted small mt-1" id="add-account-hint">LRN users get their cipher as the password. Non-LRN users get a random temporary password.</p>
+    </div>
+    <footer class="modal-foot">
+      <button class="btn btn-outline" id="add-account-cancel">Cancel</button>
+      <button class="btn btn-primary" id="add-account-create">
+        <%- include('../partials/icon', { name: 'plus', size: 16 }) %>
+        <span>Create account</span>
+      </button>
+    </footer>
+  </div>
+</div>
+
+<!-- Reset password result modal -->
+<div id="pwd-result-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="pwd-result-title">
+  <div class="modal-content">
+    <header class="modal-head">
+      <h2 id="pwd-result-title">Password reset</h2>
+      <button class="icon-btn" id="pwd-result-close" aria-label="Close"><%- include('../partials/icon', { name: 'x', size: 18 }) %></button>
+    </header>
+    <div class="modal-body">
+      <p id="pwd-result-msg"></p>
+      <div id="pwd-result-pwd-wrap" class="hidden">
+        <label>Temporary password</label>
+        <div class="image-input-row">
+          <input type="text" id="pwd-result-pwd" readonly />
+          <button type="button" class="btn btn-outline btn-sm" id="pwd-result-copy">
+            <%- include('../partials/icon', { name: 'copy', size: 14 }) %>
+            <span>Copy</span>
+          </button>
+        </div>
+        <p class="muted tiny mt-1">Share this once. The user will be forced to set a new password on first login.</p>
+      </div>
+    </div>
+    <footer class="modal-foot">
+      <button class="btn btn-primary" id="pwd-result-done">Done</button>
+    </footer>
+  </div>
+</div>
+
+<script>
+  // ===== Filter roster by search =====
+  const search = document.getElementById('accounts-search');
+  search?.addEventListener('input', () => {
+    const q = search.value.toLowerCase().trim();
+    document.querySelectorAll('#accounts-tbody tr').forEach(row => {
+      const matches = !q ||
+        row.dataset.name.includes(q) ||
+        row.dataset.uid.includes(q) ||
+        row.dataset.role.includes(q);
+      row.style.display = matches ? '' : 'none';
+    });
+  });
+
+  // ===== CSV import modal =====
+  const csvModal = document.getElementById('csv-modal');
+  const csvDropzone = document.getElementById('csv-dropzone');
+  const csvFileInput = document.getElementById('csv-file-input');
+  const csvFileName = document.getElementById('csv-file-name');
+  const csvTextInput = document.getElementById('csv-text-input');
+  const csvPreview = document.getElementById('csv-preview');
+
+  function openCsvModal() {
+    csvFileInput.value = '';
+    csvFileName.textContent = '';
+    csvTextInput.value = '';
+    csvPreview.textContent = '';
+    csvModal.classList.remove('hidden');
+  }
+  function closeCsvModal() { csvModal.classList.add('hidden'); }
+  document.getElementById('open-csv-btn')?.addEventListener('click', openCsvModal);
+  document.getElementById('csv-close')?.addEventListener('click', closeCsvModal);
+  document.getElementById('csv-cancel')?.addEventListener('click', closeCsvModal);
+
+  csvDropzone?.addEventListener('click', () => csvFileInput.click());
+  csvDropzone?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); csvFileInput.click(); }
+  });
+  ['dragover', 'dragenter'].forEach(ev => csvDropzone.addEventListener(ev, (e) => {
+    e.preventDefault(); csvDropzone.classList.add('dragover');
+  }));
+  ['dragleave', 'dragend'].forEach(ev => csvDropzone.addEventListener(ev, () => {
+    csvDropzone.classList.remove('dragover');
+  }));
+  csvDropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    csvDropzone.classList.remove('dragover');
+    const f = e.dataTransfer.files[0];
+    if (f) loadCsvFile(f);
+  });
+  csvFileInput.addEventListener('change', () => {
+    const f = csvFileInput.files[0];
+    if (f) loadCsvFile(f);
+  });
+  function loadCsvFile(f) {
+    if (f.size > 1024 * 1024) { toast.warn('CSV must be under 1MB.'); return; }
+    csvFileName.textContent = `${f.name} (${(f.size/1024).toFixed(1)} KB)`;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      csvTextInput.value = e.target.result;
+      updateCsvPreview();
+    };
+    reader.readAsText(f);
+  }
+  csvTextInput.addEventListener('input', updateCsvPreview);
+  function updateCsvPreview() {
+    const lines = csvTextInput.value.trim().split(/\r?\n/).filter(l => l.trim());
+    csvPreview.textContent = lines.length === 0 ? '' : `${lines.length} row${lines.length === 1 ? '' : 's'} detected.`;
+  }
+
+  document.getElementById('csv-import')?.addEventListener('click', async () => {
+    const csv = csvTextInput.value.trim();
+    if (!csv) { toast.warn('Paste CSV text or choose a file first.'); return; }
+    const btn = document.getElementById('csv-import');
+    btn.disabled = true; btn.textContent = 'Importing…';
+    try {
+      const r = await fetch('/api/admin/accounts/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ csv }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok && d.ok) {
+        toast.success(`Imported ${d.created} account${d.created === 1 ? '' : 's'}. ${d.skipped} skipped, ${d.errors} error${d.errors === 1 ? '' : 's'}.`);
+        // If any accounts were created, show a "Print slips" button + auto-redirect after a beat.
+        if (d.slipsUrl && d.created > 0) {
+          setTimeout(() => {
+            // Replace the import modal body with a "Print slips" CTA so the
+            // teacher can print before we reload the page.
+            const printUrl = d.slipsUrl;
+            csvModal.querySelector('.modal-body').innerHTML = `
+              <div class="empty-state" style="padding:1.5rem;text-align:center;">
+                <p><strong>${d.created} account${d.created === 1 ? '' : 's'} imported.</strong></p>
+                <p class="muted small">Print password slips to hand out in class.</p>
+                <a href="${printUrl}" target="_blank" class="btn btn-primary mt-1" id="print-slips-link">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;display:inline-block;margin-right:0.3rem;vertical-align:middle"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  <span>Print slips</span>
+                </a>
+                <a href="/admin/accounts" class="btn btn-outline mt-1" style="margin-left:0.4rem;">Reload roster</a>
+              </div>
+            `;
+          }, 600);
+        } else {
+          setTimeout(() => location.reload(), 1200);
+        }
+      } else {
+        toast.error(d.error || 'Import failed.');
+      }
+    } catch (err) {
+      toast.error('Network error — please try again.');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> <span>Import</span>';
+    }
+  });
+
+  // ===== Add single account modal =====
+  const addModal = document.getElementById('add-account-modal');
+  function openAddModal() {
+    ['add-uid', 'add-username', 'add-name'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('add-role').value = 'student';
+    addModal.classList.remove('hidden');
+    setTimeout(() => document.getElementById('add-uid')?.focus(), 50);
+  }
+  function closeAddModal() { addModal.classList.add('hidden'); }
+  document.getElementById('open-add-account-btn')?.addEventListener('click', openAddModal);
+  document.getElementById('add-account-close')?.addEventListener('click', closeAddModal);
+  document.getElementById('add-account-cancel')?.addEventListener('click', closeAddModal);
+
+  document.getElementById('add-account-create')?.addEventListener('click', async () => {
+    const uid = document.getElementById('add-uid').value.trim();
+    const username = document.getElementById('add-username').value.trim();
+    const name = document.getElementById('add-name').value.trim();
+    const role = document.getElementById('add-role').value;
+    if (!uid) { toast.warn('UID is required.'); return; }
+    if (!username) { toast.warn('Username is required.'); return; }
+    const btn = document.getElementById('add-account-create');
+    btn.disabled = true; btn.textContent = 'Creating…';
+    try {
+      const r = await fetch('/api/admin/accounts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid, username, name, role }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok && d.ok) {
+        if (d.isLrn) {
+          toast.success(`Account created. The student can sign in with their LRN cipher.`);
+          setTimeout(() => location.reload(), 1500);
+        } else {
+          // Show the temporary password in the reset-result modal
+          closeAddModal();
+          document.getElementById('pwd-result-msg').textContent = `Account created. Share this temporary password with ${name || username} once:`;
+          document.getElementById('pwd-result-pwd').value = d.temporaryPassword;
+          document.getElementById('pwd-result-pwd-wrap').classList.remove('hidden');
+          document.getElementById('pwd-result-modal').classList.remove('hidden');
+        }
+      } else {
+        toast.error(d.error || 'Failed to create account.');
+      }
+    } catch (err) {
+      toast.error('Network error — please try again.');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> <span>Create account</span>';
+    }
+  });
+
+  // ===== Reset password =====
+  document.querySelectorAll('.reset-pwd-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const userId = btn.dataset.userId;
+      const name = btn.dataset.name;
+      const ok = await confirmToast({
+        title: `Reset ${name}'s password?`,
+        message: 'This resets the password to the default (LRN cipher for LRN users, or a random temporary password for others). The user will be forced to set a new one on next login.',
+        confirmText: 'Yes, reset',
+        cancelText: 'Cancel',
+        danger: true,
+      });
+      if (!ok) return;
+      btn.disabled = true; btn.textContent = 'Resetting…';
+      try {
+        const r = await fetch('/api/admin/accounts/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (r.ok && d.ok) {
+          document.getElementById('pwd-result-msg').textContent = d.message;
+          const pwdWrap = document.getElementById('pwd-result-pwd-wrap');
+          if (d.isLrn) {
+            pwdWrap.classList.add('hidden');
+          } else {
+            document.getElementById('pwd-result-pwd').value = d.temporaryPassword;
+            pwdWrap.classList.remove('hidden');
+          }
+          document.getElementById('pwd-result-modal').classList.remove('hidden');
+        } else {
+          toast.error(d.error || 'Failed to reset password.');
+        }
+      } catch (err) {
+        toast.error('Network error — please try again.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Reset password';
+      }
+    });
+  });
+
+  // ===== Remove account =====
+  document.querySelectorAll('.remove-account-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const userId = btn.dataset.userId;
+      const name = btn.dataset.name;
+      const ok = await confirmToast({
+        title: `Remove ${name}?`,
+        message: 'This permanently removes the account AND deletes their attempts, reactions, uploads, and live-test participation. This cannot be undone.',
+        confirmText: 'Yes, remove',
+        cancelText: 'Cancel',
+        danger: true,
+      });
+      if (!ok) return;
+      btn.disabled = true; btn.textContent = 'Removing…';
+      try {
+        const r = await fetch(`/api/admin/accounts/${userId}/remove`, { method: 'POST' });
+        const d = await r.json().catch(() => ({}));
+        if (r.ok) {
+          toast.success(`${name} removed.`);
+          btn.closest('tr')?.remove();
+        } else {
+          toast.error(d.error || 'Failed to remove account.');
+        }
+      } catch (err) {
+        toast.error('Network error — please try again.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Remove';
+      }
+    });
+  });
+
+  // ===== Pwd result modal =====
+  document.getElementById('pwd-result-close')?.addEventListener('click', () => {
+    document.getElementById('pwd-result-modal').classList.add('hidden');
+  });
+  document.getElementById('pwd-result-done')?.addEventListener('click', () => {
+    document.getElementById('pwd-result-modal').classList.add('hidden');
+    location.reload();
+  });
+  document.getElementById('pwd-result-copy')?.addEventListener('click', () => {
+    const input = document.getElementById('pwd-result-pwd');
+    input.select();
+    navigator.clipboard?.writeText(input.value).then(() => toast.success('Copied to clipboard.'));
+  });
+
+  // ESC to close modals
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (!csvModal.classList.contains('hidden')) closeCsvModal();
+    else if (!addModal.classList.contains('hidden')) closeAddModal();
+    else if (!document.getElementById('pwd-result-modal').classList.contains('hidden')) {
+      document.getElementById('pwd-result-modal').classList.add('hidden');
+    }
+  });
+</script>

@@ -1,0 +1,116 @@
+<div class="page-head">
+  <p class="kicker">Today</p>
+  <h1><%= new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) %></h1>
+  <p class="muted">Your daily review queue. Come back tomorrow to keep your streak alive.</p>
+</div>
+
+<div class="today-hero">
+  <div class="today-streak-card">
+    <span class="kicker">Your streak</span>
+    <div class="streak-val">
+      <span class="streak-flame">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+      </span>
+      <%= streakDays %> <small>day<%= streakDays === 1 ? '' : 's' %></small>
+    </div>
+    <% if (streakDays === 0) { %>
+      <p class="muted small">Review one card or take one quiz today to start a streak.</p>
+    <% } else if (streakDays < 3) { %>
+      <p class="muted small">Keep going — the streak grows tomorrow.</p>
+    <% } else { %>
+      <p class="muted small">You're on a roll. Keep it up.</p>
+    <% } %>
+  </div>
+
+  <div class="today-quick-card">
+    <h3>Quick stats</h3>
+    <div class="quick-stat"><span class="stat-name">Cards due now</span><span class="stat-num"><%= srs.due %></span></div>
+    <div class="quick-stat"><span class="stat-name">Cards learned</span><span class="stat-num"><%= srs.learned %> / <%= srs.totalCards %></span></div>
+    <div class="quick-stat"><span class="stat-name">Mastery</span><span class="stat-num"><%= srs.mastery %>%</span></div>
+    <div class="quick-stat"><span class="stat-name">Cards reviewed (all-time)</span><span class="stat-num"><%= srs.reviewed %></span></div>
+  </div>
+</div>
+
+<% if (activeSession) { %>
+  <div class="card live-banner mb-2">
+    <span class="live-pulse"></span>
+    <div>
+      <strong>Live test in progress</strong>
+      <div class="muted small"><%= activeSession.quizzes && activeSession.quizzes.title %></div>
+    </div>
+    <a href="/live-test" class="btn btn-primary">Join now</a>
+  </div>
+<% } %>
+
+<div class="today-section">
+  <h2><%- include('partials/icon', { name: 'bolt', size: 18 }) %> Due cards <span class="muted">· <%= duePreview.length %> of <%= srs.due %> ready</span></h2>
+  <% if (duePreview.length === 0) { %>
+    <p class="today-empty">No cards due right now. Come back tomorrow — or browse all cards.</p>
+    <a href="/flashcards" class="btn btn-outline btn-sm">Browse all cards</a>
+  <% } else { %>
+    <div class="cta-row">
+      <a href="/flashcards?filter=due" class="btn btn-primary">
+        <%- include('partials/icon', { name: 'play', size: 16 }) %>
+        <span>Review <%= srs.due %> due card<%= srs.due === 1 ? '' : 's' %></span>
+      </a>
+      <span class="muted small">Should take about <%= Math.max(1, Math.ceil(srs.due * 0.3)) %> min</span>
+    </div>
+  <% } %>
+</div>
+
+<div class="today-section">
+  <h2><%- include('partials/icon', { name: 'book', size: 18 }) %> New notes <% if (newNotes.length > 0) { %><span class="muted">· since you last visited</span><% } %></h2>
+  <% if (newNotes.length === 0) { %>
+    <p class="today-empty">No new notes since your last visit.</p>
+    <a href="/notes" class="btn btn-outline btn-sm">Browse all notes</a>
+  <% } else { %>
+    <div class="today-card-list">
+      <% newNotes.forEach(u => { %>
+        <a href="/notes/<%= u.slug %>" class="card card-link">
+          <span class="card-kicker">Unit <%= u.number %></span>
+          <h4><%= u.title %></h4>
+          <p class="muted"><%= (u.description || '').slice(0, 100) %><%= (u.description || '').length > 100 ? '…' : '' %></p>
+          <div class="card-meta"><span><%= (u.parts || []).length %> part<%= (u.parts || []).length === 1 ? '' : 's' %></span><span>· Updated <%= u.updated_at %></span></div>
+        </a>
+      <% }) %>
+    </div>
+  <% } %>
+</div>
+
+<div class="today-section">
+  <h2><%- include('partials/icon', { name: 'brain', size: 18 }) %> Quizzes you haven't tried <span class="muted">· <%= untriedQuizzes.length %> new</span></h2>
+  <% if (untriedQuizzes.length === 0) { %>
+    <p class="today-empty">You've tried every practice quiz. Nice.</p>
+  <% } else { %>
+    <div class="today-card-list">
+      <% untriedQuizzes.forEach(q => { %>
+        <a href="/practice/<%= q.id %>" class="card card-link">
+          <h4><%= q.title %></h4>
+          <p class="muted"><%= (q.description || '').slice(0, 100) %><%= (q.description || '').length > 100 ? '…' : '' %></p>
+          <div class="card-meta"><span><%= (q.items || []).length %> item<%= (q.items || []).length === 1 ? '' : 's' %></span></div>
+        </a>
+      <% }) %>
+    </div>
+  <% } %>
+</div>
+
+<div class="today-section">
+  <h2><%- include('partials/icon', { name: 'trophy', size: 18 }) %> Quick links</h2>
+  <div class="grid grid-3">
+    <a href="/notes" class="card card-link">
+      <div class="card-icon-wrap"><%- include('partials/icon', { name: 'book', size: 22 }) %></div>
+      <h3>All notes</h3>
+      <p class="muted">Browse every unit</p>
+    </a>
+    <a href="/flashcards" class="card card-link">
+      <div class="card-icon-wrap"><%- include('partials/icon', { name: 'bolt', size: 22 }) %></div>
+      <h3>All flashcards</h3>
+      <p class="muted">Spaced repetition</p>
+    </a>
+    <a href="/leaderboard" class="card card-link">
+      <div class="card-icon-wrap"><%- include('partials/icon', { name: 'trophy', size: 22 }) %></div>
+      <h3>Leaderboard</h3>
+      <p class="muted">Weekly + all-time</p>
+    </a>
+  </div>
+</div>

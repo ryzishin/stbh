@@ -1,0 +1,122 @@
+<div class="page-head">
+  <p class="kicker"><%= kind === 'live' ? 'Live Test Editor' : 'Practice Quiz Editor' %></p>
+  <h1><%= kind === 'live' ? 'Edit the live test' : 'Manage practice quizzes' %></h1>
+  <p class="muted">Add a quiz, then add items (questions). Each item can be multiple choice, true/false, identification, or open-ended.</p>
+  <button class="btn btn-primary mt-1" id="new-quiz-btn">
+    <%- include('../partials/icon', { name: 'plus', size: 16 }) %>
+    <span>New <%= kind === 'live' ? 'live test' : 'quiz' %></span>
+  </button>
+</div>
+
+<div id="quizzes-list">
+  <% quizzes.forEach(q => { %>
+    <div class="card quiz-card" data-quiz-id="<%= q.id %>">
+      <div class="quiz-card-head">
+        <div><h3><%= q.title %></h3><p class="muted"><%= q.description %></p></div>
+        <div class="quiz-actions">
+          <span class="badge"><%= q.items.length %> items</span>
+          <button class="btn btn-sm btn-outline edit-quiz-btn" data-quiz='<%- JSON.stringify({ id: q.id, title: q.title, description: q.description, time_limit_min: q.time_limit_min, deadline: q.deadline }) %>'>
+            <%- include('../partials/icon', { name: 'pencil', size: 14 }) %>
+            <span>Edit quiz</span>
+          </button>
+          <button class="btn btn-sm btn-outline add-item-btn" data-quiz-id="<%= q.id %>">
+            <%- include('../partials/icon', { name: 'plus', size: 14 }) %>
+            <span>Item</span>
+          </button>
+          <% if (kind !== 'live') { %>
+            <button class="icon-btn delete-quiz-btn" data-quiz-id="<%= q.id %>" title="Delete quiz" aria-label="Delete quiz">
+              <%- include('../partials/icon', { name: 'trash', size: 16 }) %>
+            </button>
+          <% } %>
+        </div>
+      </div>
+      <div class="items-list" data-quiz-id="<%= q.id %>">
+        <% q.items.forEach((it, i) => { %>
+          <div class="item-row clickable" data-item-id="<%= it.id %>" title="Click to edit this item">
+            <span class="item-idx"><%= i + 1 %></span>
+            <span class="badge"><%= it.type.replace(/_/g, ' ') %></span>
+            <span class="item-q"><%= it.question %></span>
+            <span class="muted small"><%= it.points %>pt<%= it.points !== 1 ? 's' : '' %></span>
+            <div class="item-actions">
+              <button class="btn btn-sm btn-outline edit-item-btn" data-item='<%- JSON.stringify(it) %>' data-quiz-id="<%= q.id %>">
+                <%- include('../partials/icon', { name: 'pencil', size: 14 }) %>
+                <span>Edit</span>
+              </button>
+              <button class="btn btn-sm btn-outline btn-danger delete-item-btn" data-item-id="<%= it.id %>" data-quiz-id="<%= q.id %>" title="Delete item" aria-label="Delete item">
+                <%- include('../partials/icon', { name: 'trash', size: 14 }) %>
+                <span>Delete</span>
+              </button>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+    </div>
+  <% }) %>
+</div>
+
+<!-- Edit quiz metadata modal -->
+<div id="edit-quiz-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="edit-quiz-title">
+  <div class="modal-content">
+    <header class="modal-head"><h2 id="edit-quiz-title">Edit quiz</h2><button class="icon-btn" id="eq-close" aria-label="Close"><%- include('../partials/icon', { name: 'x', size: 18 }) %></button></header>
+    <div class="modal-body">
+      <input type="hidden" id="eq-id" />
+      <label>Title</label><input id="eq-title" />
+      <label>Description</label><textarea id="eq-desc" rows="2"></textarea>
+      <div class="grid grid-2">
+        <div><label>Time limit (min)</label><input id="eq-tl" type="number" min="1" max="180" /></div>
+        <div><label>Deadline</label><input id="eq-dl" type="datetime-local" /></div>
+      </div>
+    </div>
+    <footer class="modal-foot"><button class="btn btn-outline" id="eq-cancel">Cancel</button><button class="btn btn-primary" id="eq-save"><%- include('../partials/icon', { name: 'save', size: 16 }) %> <span>Save quiz</span></button></footer>
+  </div>
+</div>
+
+<!-- Item editor modal -->
+<div id="item-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="item-modal-title">
+  <div class="modal-content wide">
+    <header class="modal-head"><h2 id="item-modal-title">New item</h2><button class="icon-btn" id="item-close" aria-label="Close"><%- include('../partials/icon', { name: 'x', size: 18 }) %></button></header>
+    <div class="modal-body">
+      <div class="grid grid-2">
+        <label>Type<select id="item-type" data-custom>
+          <option value="multiple_choice">Multiple choice</option>
+          <option value="true_false">True / False</option>
+          <option value="identification">Identification</option>
+          <option value="open_ended">Open-ended</option>
+        </select></label>
+        <label>Points<input type="number" id="item-points" min="1" max="10" value="1" /></label>
+      </div>
+      <label>Question</label>
+      <textarea id="item-question" rows="2"></textarea>
+      <label>Question image (optional)</label>
+      <div class="image-input-row">
+        <input id="item-image" type="url" placeholder="Paste image URL…" />
+        <button type="button" class="btn btn-outline btn-sm" id="item-image-upload-btn">
+          <%- include('../partials/icon', { name: 'upload', size: 14 }) %>
+          <span>Upload</span>
+        </button>
+        <input type="file" id="item-image-file" accept="image/*" hidden />
+        <img id="item-image-preview" class="image-preview hidden" alt="" />
+      </div>
+      <div id="options-block">
+        <label>Options <span class="muted small">(click the green circle to mark the correct one — or double-click the option text)</span></label>
+        <div id="options-list"></div>
+        <button type="button" class="btn btn-sm btn-outline dashed" id="add-option-btn">
+          <%- include('../partials/icon', { name: 'plus', size: 14 }) %>
+          <span>Add option</span>
+        </button>
+      </div>
+      <div id="answer-key-block" class="hidden">
+        <label>Answer key (the answer must contain this phrase, case-insensitive)</label>
+        <input id="item-answer" />
+      </div>
+      <label>Explanation (optional)</label>
+      <textarea id="item-explanation" rows="2"></textarea>
+    </div>
+    <footer class="modal-foot"><button class="btn btn-outline" id="item-cancel">Cancel</button><button class="btn btn-primary" id="item-save"><%- include('../partials/icon', { name: 'save', size: 16 }) %> <span>Save item</span></button></footer>
+  </div>
+</div>
+
+<script>
+  window.__QUIZ_KIND__ = '<%= kind || "practice" %>';
+</script>
+<script src="/js/quizzes-editor.js"></script>

@@ -1,0 +1,164 @@
+<div class="page-head">
+  <p class="kicker">Profile</p>
+  <h1>Your account</h1>
+</div>
+
+<% if (locals.mustChangePassword) { %>
+  <div class="alert alert-warn">
+    Your password was just reset. Please set a new password before continuing.
+  </div>
+<% } %>
+
+<div class="profile-layout">
+  <aside class="profile-card-side card center">
+    <div class="avatar avatar-xl pfp-preview" id="pfp-preview"
+         style="background: linear-gradient(135deg, oklch(0.65 0.18 <%= user.avatar_color || 152 %>), oklch(0.55 0.16 <%= (user.avatar_color || 152) + 30 %>));"
+         title="Click to change your photo" role="button" tabindex="0" aria-label="Change profile photo">
+      <% if (user.avatar_url) { %><img src="<%= user.avatar_url %>" alt="<%= user.username || user.name %>" /><% } else { %><%= (user.username || user.name || '').split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase() %><% } %>
+      <span class="pfp-overlay" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      </span>
+    </div>
+    <h2 class="mt"><%= user.username || user.name %></h2>
+    <span class="badge accent"><%= user.role %></span>
+    <p class="muted small mt-1">UID: <%= user.uid %></p>
+    <% if (user.bio) { %>
+      <p class="profile-bio mt-1"><%- user.bio %></p>
+    <% } else { %>
+      <p class="muted tiny mt-1">No bio yet.</p>
+    <% } %>
+    <form method="post" action="/api/profile" enctype="multipart/form-data" id="pfp-form" class="pfp-form legacy-hidden">
+      <input type="file" name="avatar" accept="image/*" id="pfp-input" hidden />
+    </form>
+    <a href="/u/<%= encodeURIComponent(user.username || user.uid) %>" class="btn btn-ghost btn-sm mt-1 w-full">
+      <%- include('partials/icon', { name: 'eye', size: 16 }) %>
+      <span>View as others see you</span>
+    </a>
+    <p class="muted tiny mt-1">Click your photo to upload a new one.</p>
+  </aside>
+
+  <section class="profile-card-main card">
+    <h3>Edit profile</h3>
+    <div class="form-grid">
+      <div class="form-field">
+        <label for="profile-username">Username <span class="muted tiny">(unique)</span></label>
+        <input type="text" id="profile-username" value="<%= user.username || user.name %>" minlength="3" maxlength="32" pattern="[a-zA-Z0-9_.\-]+" autocomplete="username" />
+      </div>
+      <div class="form-field">
+        <label for="profile-name">Full name <span class="muted tiny">(optional)</span></label>
+        <input type="text" id="profile-name" value="<%= user.name %>" autocomplete="name" />
+      </div>
+    </div>
+
+    <label for="profile-bio">Bio <span class="muted tiny">(optional, max 101 chars)</span></label>
+    <div class="bio-input-wrap">
+      <textarea id="profile-bio" rows="3" maxlength="101" placeholder="Tell your classmates a little about you…"><%= user.bio || '' %></textarea>
+      <span class="bio-counter muted tiny" id="bio-counter"><%= (user.bio || '').length %>/101</span>
+    </div>
+
+    <h4 class="section-sub-head"><%- include('partials/icon', { name: 'link', size: 16 }) %> Socials <span class="muted tiny">(optional)</span></h4>
+    <div class="socials-grid">
+      <label class="social-field">
+        <span class="social-label"><%- include('partials/icon', { name: 'facebook', size: 18, cls: 'social-icon-facebook' }) %> Facebook</span>
+        <input type="text" id="social-facebook" value="<%= (user.socials && user.socials.facebook) || '' %>" placeholder="username or full URL" />
+      </label>
+      <label class="social-field">
+        <span class="social-label"><%- include('partials/icon', { name: 'instagram', size: 18, cls: 'social-icon-instagram' }) %> Instagram</span>
+        <input type="text" id="social-instagram" value="<%= (user.socials && user.socials.instagram) || '' %>" placeholder="username or full URL" />
+      </label>
+      <label class="social-field">
+        <span class="social-label"><%- include('partials/icon', { name: 'tiktok', size: 18, cls: 'social-icon-tiktok' }) %> TikTok</span>
+        <input type="text" id="social-tiktok" value="<%= (user.socials && user.socials.tiktok) || '' %>" placeholder="@username or full URL" />
+      </label>
+    </div>
+
+    <div class="cta-row mt-2">
+      <button class="btn btn-primary" id="save-profile">
+        <%- include('partials/icon', { name: 'save', size: 16 }) %>
+        <span>Save changes</span>
+      </button>
+      <span class="muted tiny" id="profile-saved-msg"></span>
+    </div>
+
+    <hr class="my" />
+
+    <h3>Notifications &amp; sounds</h3>
+    <div class="sound-toggle-row">
+      <div>
+        <strong>Live-test chime</strong>
+        <div class="muted small">Play a soft chime when the teacher advances to the next item — only when your tab is in the background.</div>
+      </div>
+      <label class="toggle-row" style="padding:0">
+        <input type="checkbox" id="sound-toggle" />
+      </label>
+    </div>
+
+    <hr class="my" />
+
+    <h3>Change password</h3>
+    <label>Current password</label>
+    <div class="password-input" id="pw-current">
+      <input type="password" id="current-password" placeholder="Your current password" autocomplete="current-password" />
+      <button type="button" class="pw-toggle" data-toggle-password="current-password" aria-label="Show password" title="Show password">
+        <svg class="pw-show" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        <svg class="pw-hide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+      </button>
+    </div>
+    <label>New password</label>
+    <div class="password-input" id="pw-new">
+      <input type="password" id="new-password" placeholder="At least 6 characters" autocomplete="new-password" />
+      <button type="button" class="pw-toggle" data-toggle-password="new-password" aria-label="Show password" title="Show password">
+        <svg class="pw-show" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        <svg class="pw-hide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+      </button>
+    </div>
+    <label>Confirm new password</label>
+    <div class="password-input" id="pw-confirm">
+      <input type="password" id="confirm-password" placeholder="Re-type new password" autocomplete="new-password" />
+      <button type="button" class="pw-toggle" data-toggle-password="confirm-password" aria-label="Show password" title="Show password">
+        <svg class="pw-show" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        <svg class="pw-hide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+      </button>
+    </div>
+    <button class="btn btn-primary" id="change-password-btn">
+      <%- include('partials/icon', { name: 'lock', size: 16 }) %>
+      <span>Change password</span>
+    </button>
+
+    <hr class="my" />
+
+    <h3>Your stats</h3>
+    <div class="stat-row">
+      <div class="stat-card">
+        <div class="stat-icon-row"><%- include('partials/icon', { name: 'trophy', size: 22 }) %><div class="stat-val"><%= user.points %></div></div>
+        <div class="stat-label">Total points</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon-row"><%- include('partials/icon', { name: 'flame', size: 22 }) %><div class="stat-val"><%= user.streak_days %></div></div>
+        <div class="stat-label">Day streak</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon-row"><%- include('partials/icon', { name: 'brain', size: 22 }) %><div class="stat-val"><%= attempts.length %></div></div>
+        <div class="stat-label">Quizzes taken</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon-row"><%- include('partials/icon', { name: 'card', size: 22 }) %><div class="stat-val"><%= user.flashcards_reviewed %></div></div>
+        <div class="stat-label">Cards reviewed</div>
+      </div>
+    </div>
+
+    <% if (attempts.length > 0) { %>
+      <h3 class="mt">Recent practice attempts</h3>
+      <div class="attempts-list">
+        <% attempts.slice(0, 8).forEach(a => { %>
+          <div class="attempt-row">
+            <div><strong><%= a.quizzes ? a.quizzes.title : 'Quiz' %></strong><div class="muted tiny"><%= new Date(a.taken_at).toLocaleString() %></div></div>
+            <div class="attempt-score"><strong><%= a.score %>/<%= a.total %></strong><div class="muted tiny"><%= a.total > 0 ? Math.round(a.score / a.total * 100) : 0 %>%</div></div>
+          </div>
+        <% }) %>
+      </div>
+    <% } %>
+  </section>
+</div>
+
+<script src="/js/profile.js"></script>

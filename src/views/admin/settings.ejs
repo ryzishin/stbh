@@ -1,0 +1,313 @@
+<div class="page-head">
+  <p class="kicker admin">Settings</p>
+  <h1>Class settings &amp; test behavior</h1>
+  <p class="muted">Configure anti-cheat rules, the points economy, live test timing, and notifications. Everything you change here applies immediately to all students.</p>
+</div>
+
+<% const ac = settings.anti_cheat || {}; const pc = settings.points_config || {}; %>
+
+<form id="settings-form">
+  <div class="card settings-section">
+    <div class="card-head">
+      <h3>Anti-cheat (live tests)</h3>
+      <span class="badge">Auto-submit on warning cap</span>
+    </div>
+    <p class="muted small">Warnings accumulate while the test is active. At the cap, the student's current answer is auto-submitted (instead of removing them from the test) so their progress is preserved.</p>
+    <div class="setting-row">
+      <div class="setting-label">
+        <strong>Block tab switching</strong>
+        <span class="muted">Detect when the student leaves the test tab.</span>
+      </div>
+      <div class="setting-control">
+        <label class="toggle-row" style="padding:0">
+          <input type="checkbox" name="blockTabSwitch" <%= ac.blockTabSwitch ? 'checked' : '' %> />
+        </label>
+      </div>
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">
+        <strong>Require fullscreen</strong>
+        <span class="muted">Auto-fullscreen on join; warn if exited.</span>
+      </div>
+      <div class="setting-control">
+        <label class="toggle-row" style="padding:0">
+          <input type="checkbox" name="requireFullscreen" <%= ac.requireFullscreen ? 'checked' : '' %> />
+        </label>
+      </div>
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">
+        <strong>Block copy / cut / paste</strong>
+        <span class="muted">Disable clipboard during the test.</span>
+      </div>
+      <div class="setting-control">
+        <label class="toggle-row" style="padding:0">
+          <input type="checkbox" name="blockCopy" <%= ac.blockCopy ? 'checked' : '' %> />
+        </label>
+      </div>
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">
+        <strong>Block right-click</strong>
+        <span class="muted">Disable the browser context menu.</span>
+      </div>
+      <div class="setting-control">
+        <label class="toggle-row" style="padding:0">
+          <input type="checkbox" name="blockRightClick" <%= ac.blockRightClick ? 'checked' : '' %> />
+        </label>
+      </div>
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">
+        <strong>Max warnings before auto-submit</strong>
+        <span class="muted">Recommended: 3. Too high and cheating is easy; too low and a single misclick ends the test.</span>
+      </div>
+      <div class="setting-control">
+        <input type="number" name="maxWarnings" min="1" max="10" value="<%= ac.maxWarnings || 3 %>" class="small-input" />
+      </div>
+    </div>
+  </div>
+
+  <div class="card settings-section">
+    <div class="card-head">
+      <h3>Points economy</h3>
+      <span class="badge">All rewards</span>
+    </div>
+    <p class="muted small">Customize how many points students earn for each activity. Streak bonuses compound daily.</p>
+    <div class="settings-grid">
+      <div class="setting-row" style="flex-direction:column;align-items:stretch;border:0;padding:0;">
+        <div class="setting-label">
+          <strong>Practice quiz — base points</strong>
+          <span class="muted">Awarded just for finishing a practice quiz.</span>
+        </div>
+        <input type="number" name="practiceBase" min="0" max="100" value="<%= pc.practiceBase ?? 5 %>" id="cfg-practiceBase" />
+      </div>
+      <div class="setting-row" style="flex-direction:column;align-items:stretch;border:0;padding:0;">
+        <div class="setting-label">
+          <strong>Practice quiz — points per correct</strong>
+          <span class="muted">Multiplied by the student's score on the quiz.</span>
+        </div>
+        <input type="number" name="perCorrect" min="0" max="50" value="<%= pc.perCorrect ?? 1 %>" id="cfg-perCorrect" />
+      </div>
+      <div class="setting-row" style="flex-direction:column;align-items:stretch;border:0;padding:0;">
+        <div class="setting-label">
+          <strong>Per flashcard reviewed</strong>
+          <span class="muted">Once per card per session (client-side dedupe).</span>
+        </div>
+        <input type="number" name="perFlashcard" min="0" max="50" value="<%= pc.perFlashcard ?? 2 %>" id="cfg-perFlashcard" />
+      </div>
+      <div class="setting-row" style="flex-direction:column;align-items:stretch;border:0;padding:0;">
+        <div class="setting-label">
+          <strong>Streak bonus — daily flat</strong>
+          <span class="muted">Added once per consecutive day.</span>
+        </div>
+        <input type="number" name="streakBonusDaily" min="0" max="20" value="<%= pc.streakBonusDaily ?? 1 %>" id="cfg-streakBonusDaily" />
+      </div>
+      <div class="setting-row" style="flex-direction:column;align-items:stretch;border:0;padding:0;">
+        <div class="setting-label">
+          <strong>Streak bonus — multiplier</strong>
+          <span class="muted">streak × multiplier, capped at "max" below.</span>
+        </div>
+        <input type="number" step="0.1" name="streakBonusMultiplier" min="0" max="2" value="<%= pc.streakBonusMultiplier ?? 0.5 %>" id="cfg-streakBonusMultiplier" />
+      </div>
+      <div class="setting-row" style="flex-direction:column;align-items:stretch;border:0;padding:0;">
+        <div class="setting-label">
+          <strong>Streak bonus — max</strong>
+          <span class="muted">Cap on the multiplier bonus.</span>
+        </div>
+        <input type="number" name="streakBonusMax" min="0" max="50" value="<%= pc.streakBonusMax ?? 5 %>" id="cfg-streakBonusMax" />
+      </div>
+    </div>
+
+    <!-- Live points calculator — lets the admin see exactly what a student earns. -->
+    <div class="setting-row" style="border-top:1px solid var(--border);margin-top:1rem;padding-top:1rem;flex-direction:column;align-items:stretch;gap:0.75rem;">
+      <div class="setting-label">
+        <strong>Points preview</strong>
+        <span class="muted">See what a student earns with the current settings. Updates as you change the inputs above.</span>
+      </div>
+      <div class="settings-grid" style="grid-template-columns:repeat(3,1fr);gap:0.75rem;">
+        <div>
+          <label style="margin-top:0">Streak (days)</label>
+          <input type="number" id="calc-streak" min="0" max="100" value="7" />
+        </div>
+        <div>
+          <label style="margin-top:0">Cards reviewed</label>
+          <input type="number" id="calc-cards" min="0" max="100" value="10" />
+        </div>
+        <div>
+          <label style="margin-top:0">Quiz score (correct / total)</label>
+          <div style="display:flex;gap:0.4rem;align-items:center;">
+            <input type="number" id="calc-score-correct" min="0" max="50" value="8" style="flex:1" />
+            <span class="muted">/</span>
+            <input type="number" id="calc-score-total" min="1" max="50" value="10" style="flex:1" />
+          </div>
+        </div>
+      </div>
+      <div class="card" style="background:var(--bg-soft);padding:1rem 1.25rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
+          <strong style="font-size:1.1rem;">Total points the student would earn:</strong>
+          <span id="calc-total" style="font-size:1.6rem;font-weight:800;color:var(--accent-strong);">0</span>
+        </div>
+        <div id="calc-breakdown" class="muted small" style="margin-top:0.5rem;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card settings-section">
+    <div class="card-head">
+      <h3>Live test timing</h3>
+      <span class="badge">Per-quiz</span>
+    </div>
+    <p class="muted small">Pick a live test to edit its time limit and deadline. These override the defaults for that specific test only.</p>
+    <label>Live test</label>
+    <select name="quiz_id" id="settings-quiz-select" data-custom>
+      <% (liveQuizzes || []).forEach(q => { %>
+        <option value="<%= q.id %>"><%= q.title %> (<%= (q.items || []).length %> items)</option>
+      <% }) %>
+      <% if ((liveQuizzes || []).length === 0) { %>
+        <option value="">No live tests yet — create one from Edit Live Test</option>
+      <% } %>
+    </select>
+    <div class="settings-grid">
+      <div>
+        <label>Time limit (minutes)</label>
+        <input type="number" name="time_limit_min" min="1" max="180" value="<%= (liveQuizzes[0] && liveQuizzes[0].time_limit_min) || 30 %>" />
+      </div>
+      <div>
+        <label>Deadline</label>
+        <input type="datetime-local" name="deadline" value="" />
+      </div>
+    </div>
+  </div>
+
+  <div class="card settings-section">
+    <div class="card-head">
+      <h3>Notifications</h3>
+      <span class="badge">Test the bell</span>
+    </div>
+    <p class="muted small">Send a test notification to your account to verify the bell works end-to-end (Socket.IO + DB persistence).</p>
+    <button type="button" class="btn btn-outline" id="test-notification-btn">
+      <%- include('../partials/icon', { name: 'send', size: 18 }) %>
+      <span>Send test notification</span>
+    </button>
+  </div>
+
+  <div class="card settings-section">
+    <div class="card-head">
+      <h3>About this panel</h3>
+    </div>
+    <p class="muted small">These settings live in the <code class="mono">settings</code> MongoDB collection (single document, id: 1). They are read on every live-test join and every points award — changes here propagate within seconds. The weekly leaderboard reset is automatic (lazy on Monday Manila-time).</p>
+  </div>
+
+  <div class="cta-row">
+    <button type="submit" class="btn btn-primary">
+      <%- include('../partials/icon', { name: 'save', size: 16 }) %>
+      <span>Save settings</span>
+    </button>
+    <span class="muted small" id="settings-saved-msg"></span>
+  </div>
+</form>
+
+<script>
+  document.getElementById('settings-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    const submitBtn = f.querySelector('button[type="submit"]');
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Saving…'; }
+    const body = {
+      anti_cheat: {
+        blockTabSwitch: f.blockTabSwitch.checked,
+        requireFullscreen: f.requireFullscreen.checked,
+        blockCopy: f.blockCopy.checked,
+        blockRightClick: f.blockRightClick.checked,
+        maxWarnings: Number(f.maxWarnings.value)
+      },
+      points_config: {
+        practiceBase: Number(f.practiceBase.value),
+        perCorrect: Number(f.perCorrect.value),
+        perFlashcard: Number(f.perFlashcard.value),
+        streakBonusDaily: Number(f.streakBonusDaily.value),
+        streakBonusMultiplier: Number(f.streakBonusMultiplier.value),
+        streakBonusMax: Number(f.streakBonusMax.value),
+      },
+      time_limit_min: Number(f.time_limit_min.value),
+      quiz_id: f.quiz_id.value
+    };
+    try {
+      const r = await fetch('/api/admin/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (r.ok) {
+        toast.success('Settings saved.');
+        const savedMsg = document.getElementById('settings-saved-msg');
+        if (savedMsg) {
+          savedMsg.textContent = 'Saved.';
+          setTimeout(() => { savedMsg.textContent = ''; }, 2500);
+        }
+      } else {
+        const d = await r.json().catch(() => ({}));
+        toast.error(d.error || 'Failed to save settings.');
+      }
+    } catch (err) {
+      toast.error('Network error — please try again.');
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> <span>Save settings</span>';
+      }
+    }
+  });
+
+  document.getElementById('test-notification-btn')?.addEventListener('click', async () => {
+    try {
+      const r = await fetch('/api/notifications/test', { method: 'POST' });
+      if (r.ok) {
+        toast.success('Test notification sent — check the bell in the top bar.');
+        window.refreshNotifications?.();
+      } else {
+        const d = await r.json().catch(() => ({}));
+        toast.error(d.error || 'Failed to send test notification.');
+      }
+    } catch (err) {
+      toast.error('Network error.');
+    }
+  });
+
+  // ===== Live points calculator =====
+  // Recomputes on any of the config inputs changing OR any of the scenario inputs.
+  function num(id, fallback = 0) {
+    const v = Number(document.getElementById(id)?.value);
+    return Number.isFinite(v) ? v : fallback;
+  }
+  function computeTotal() {
+    const practiceBase = num('cfg-practiceBase', 5);
+    const perCorrect = num('cfg-perCorrect', 1);
+    const perFlashcard = num('cfg-perFlashcard', 2);
+    const streakBonusDaily = num('cfg-streakBonusDaily', 1);
+    const streakBonusMultiplier = num('cfg-streakBonusMultiplier', 0.5);
+    const streakBonusMax = num('cfg-streakBonusMax', 5);
+    const streak = Math.max(0, num('calc-streak', 0));
+    const cards = Math.max(0, num('calc-cards', 0));
+    const scoreCorrect = Math.max(0, num('calc-score-correct', 0));
+    const scoreTotal = Math.max(1, num('calc-score-total', 1));
+    // Practice points
+    const practicePts = practiceBase + (perCorrect * scoreCorrect);
+    // Flashcard points (we use a quarter-share of the streak bonus, matching the server-side formula in services/leaderboard.js)
+    const flatStreakBonus = streak > 0 ? streakBonusDaily : 0;
+    const multBonus = streak > 0 ? Math.min(streak * streakBonusMultiplier, streakBonusMax) : 0;
+    const totalStreakBonus = Math.round(flatStreakBonus + multBonus);
+    const flashcardBonus = Math.round(totalStreakBonus / 4); // matches computeFlashcardPoints
+    const flashcardPts = (perFlashcard * cards) + flashcardBonus;
+    const total = practicePts + flashcardPts;
+    document.getElementById('calc-total').textContent = String(total);
+    const breakdown = document.getElementById('calc-breakdown');
+    if (breakdown) {
+      breakdown.innerHTML = `
+        <strong>Quiz:</strong> ${practiceBase} (base) + ${perCorrect} × ${scoreCorrect} = ${practicePts} pts.
+        <strong>Flashcards:</strong> ${perFlashcard} × ${cards} = ${perFlashcard * cards} pts${flashcardBonus > 0 ? ` + ${flashcardBonus} streak slice` : ''} = ${flashcardPts} pts.
+        ${streak > 0 ? `<strong>Streak (${streak}d):</strong> ${flatStreakBonus} (flat) + min(${streak} × ${streakBonusMultiplier}, ${streakBonusMax}) = ${totalStreakBonus} pts — split between quiz + flashcards.` : '<strong>Streak:</strong> 0 — login daily to grow it.'}
+      `;
+    }
+  }
+  ['cfg-practiceBase', 'cfg-perCorrect', 'cfg-perFlashcard', 'cfg-streakBonusDaily', 'cfg-streakBonusMultiplier', 'cfg-streakBonusMax', 'calc-streak', 'calc-cards', 'calc-score-correct', 'calc-score-total']
+    .forEach(id => document.getElementById(id)?.addEventListener('input', computeTotal));
+  computeTotal();
+</script>

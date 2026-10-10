@@ -1,0 +1,87 @@
+<div class="page-head">
+  <p class="kicker">Flashcards Editor</p>
+  <h1>Manage flashcards</h1>
+  <p class="muted">Each card reviewed by a student earns points (configurable in Admin → Settings).</p>
+</div>
+<div class="cta-row">
+  <button class="btn btn-primary" id="new-card-btn">
+    <%- include('../partials/icon', { name: 'plus', size: 16 }) %>
+    <span>New card</span>
+  </button>
+  <button class="btn btn-outline" id="bulk-card-btn">
+    <%- include('../partials/icon', { name: 'list_numbered', size: 16 }) %>
+    <span>Bulk add</span>
+  </button>
+</div>
+<div class="grid grid-3" id="cards-grid">
+  <% cards.forEach(c => {
+    const unit = units.find(u => u.id === c.unit_id);
+  %>
+    <div class="card flashcard-card" data-card-id="<%= c.id %>">
+      <div class="card-head">
+        <span class="badge"><%= unit ? unit.title : 'General' %></span>
+        <div class="card-actions">
+          <button class="icon-btn edit-card" data-card='<%- JSON.stringify(c) %>' title="Edit" aria-label="Edit card">
+            <%- include('../partials/icon', { name: 'pencil', size: 14 }) %>
+          </button>
+          <button class="icon-btn duplicate-card" data-card='<%- JSON.stringify(c) %>' title="Duplicate" aria-label="Duplicate card">
+            <%- include('../partials/icon', { name: 'copy', size: 14 }) %>
+          </button>
+          <button class="icon-btn delete-card" data-card-id="<%= c.id %>" title="Delete" aria-label="Delete card">
+            <%- include('../partials/icon', { name: 'trash', size: 14 }) %>
+          </button>
+        </div>
+      </div>
+      <p class="strong"><%= c.front %></p>
+      <p class="muted small"><%= c.back %></p>
+    </div>
+  <% }) %>
+  <% if (cards.length === 0) { %>
+    <p class="muted" style="grid-column: 1 / -1; padding: 2rem; text-align: center;">
+      No flashcards yet. Click <strong>New card</strong> or <strong>Bulk add</strong> to start.
+    </p>
+  <% } %>
+</div>
+
+<!-- Single card editor modal -->
+<div id="card-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="card-modal-title">
+  <div class="modal-content">
+    <header class="modal-head"><h2 id="card-modal-title">New flashcard</h2><button class="icon-btn" id="card-close" aria-label="Close"><%- include('../partials/icon', { name: 'x', size: 18 }) %></button></header>
+    <div class="modal-body">
+      <label>Front (term)</label><input id="card-front" />
+      <label>Back (definition)</label><textarea id="card-back" rows="3"></textarea>
+      <label>Unit</label>
+      <select id="card-unit" data-custom>
+        <option value="">General (no unit)</option>
+        <% units.forEach(u => { %><option value="<%= u.id %>"><%= u.title %></option><% }) %>
+      </select>
+    </div>
+    <footer class="modal-foot"><button class="btn btn-outline" id="card-cancel">Cancel</button><button class="btn btn-primary" id="card-save"><%- include('../partials/icon', { name: 'save', size: 16 }) %> <span>Save</span></button></footer>
+  </div>
+</div>
+
+<!-- Bulk add modal -->
+<div id="bulk-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="bulk-modal-title">
+  <div class="modal-content wide">
+    <header class="modal-head"><h2 id="bulk-modal-title">Bulk add flashcards</h2><button class="icon-btn" id="bulk-close" aria-label="Close"><%- include('../partials/icon', { name: 'x', size: 18 }) %></button></header>
+    <div class="modal-body">
+      <p class="muted small">Paste from Quizlet, Anki, or any text editor. Format is auto-detected — no need to pick one.</p>
+      <div class="bulk-format-rules">
+        <div><strong>Tab-separated</strong> — Quizlet / Anki default. Paste directly from a spreadsheet column too.</div>
+        <div><strong>Pipe-separated</strong> — <code>front|back</code> (one per line). Optionally <code>Unit 1|front|back</code>.</div>
+        <div><strong>Term/Definition pairs</strong> — front on one line, back on the next, blank line between pairs.</div>
+        <div>Lines starting with <code>#</code> are skipped.</div>
+      </div>
+      <textarea id="bulk-input" rows="14" placeholder="Mitochondria&#9;Powerhouse of the cell&#10;Ribosome&#9;Site of protein synthesis&#10;&#10;Golgi apparatus&#9;Packages and modifies proteins&#10;&#10;— or —&#10;&#10;Mitochondria|Powerhouse of the cell&#10;Ribosome|Site of protein synthesis"></textarea>
+      <label>Default unit (used when a line doesn't specify one)</label>
+      <select id="bulk-unit" data-custom>
+        <option value="">General (no unit)</option>
+        <% units.forEach(u => { %><option value="<%= u.id %>"><%= u.title %></option><% }) %>
+      </select>
+      <p id="bulk-preview"></p>
+    </div>
+    <footer class="modal-foot"><button class="btn btn-outline" id="bulk-cancel">Cancel</button><button class="btn btn-primary" id="bulk-save"><%- include('../partials/icon', { name: 'plus', size: 16 }) %> <span>Create cards</span></button></footer>
+  </div>
+</div>
+
+<script src="/js/flashcards-editor.js"></script>

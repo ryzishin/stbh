@@ -1,0 +1,60 @@
+{
+  "name": "stem-tesla-biohub",
+  "version": "3.0.0",
+  "description": "STEM Tesla BioHub — Biology 2 class study hub. Built with Express, EJS, MongoDB, and Socket.IO.",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "db:seed": "node scripts/seed.js",
+    "db:indexes": "node scripts/init-indexes.js",
+    "accounts:create": "node scripts/create-accounts.js",
+    "accounts:reset": "node scripts/reset-password.js",
+    "accounts:promote": "node scripts/promote.js",
+    "cipher": "node scripts/cipher.js"
+  },
+  "keywords": [
+    "stem",
+    "tesla",
+    "biology",
+    "notes",
+    "quizzes",
+    "flashcards",
+    "leaderboard",
+    "live-test",
+    "mongodb",
+    "express",
+    "ejs",
+    "socket.io"
+  ],
+  "author": "STEM Tesla · Biology 2",
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "connect-mongo": "^5.1.0",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "express": "^4.21.0",
+    "express-ejs-layouts": "^2.5.1",
+    "express-rate-limit": "^7.4.1",
+    "express-session": "^1.18.1",
+    "helmet": "^8.0.0",
+    "mongodb": "^6.10.0",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "socket.io": "^4.7.5",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "eslint": "^9.12.0",
+    "mongodb-memory-server": "^10.1.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "allowScripts": {
+    "mongodb-memory-server@10.4.3": true
+  }
+}

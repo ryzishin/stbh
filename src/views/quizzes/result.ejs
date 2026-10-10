@@ -1,0 +1,137 @@
+<div class="result-card">
+  <div class="result-icon <%= score >= total * 0.6 ? 'pass' : 'fail' %>">
+    <% if (score >= total * 0.6) { %>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:34px;height:34px" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+    <% } else { %>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:34px;height:34px" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    <% } %>
+  </div>
+  <h1><%= score %> / <%= total %></h1>
+  <p class="muted"><%= quiz.title %></p>
+  <% if (typeof pointsEarned !== 'undefined' && pointsEarned !== null) { %>
+    <p class="muted">You earned <strong>+<%= pointsEarned %></strong> points toward the leaderboard.</p>
+    <% if (typeof pointsBreakdown !== 'undefined' && pointsBreakdown) { %>
+      <details class="points-breakdown">
+        <summary class="muted small" style="cursor:pointer;margin-top:0.5rem;">See breakdown</summary>
+        <div style="margin-top:0.5rem;font-size:0.8rem;color:var(--fg-muted);">
+          <div>Base (for completing): +<%= pointsBreakdown.base %></div>
+          <div>Correct answers (<%= score %> × <%= pointsBreakdown.cfg.perCorrect %>): +<%= pointsBreakdown.correct %></div>
+          <% if (pointsBreakdown.streakBonus > 0) { %>
+            <div>Streak bonus: +<%= pointsBreakdown.streakBonus %></div>
+          <% } %>
+        </div>
+      </details>
+    <% } %>
+  <% } else { %>
+    <p class="muted">You earned <strong>+<%= 5 + score %></strong> points toward the leaderboard.</p>
+  <% } %>
+
+  <% if (typeof breakdown !== 'undefined' && Array.isArray(breakdown) && breakdown.length > 0) { %>
+    <details class="result-breakdown" style="margin-top:1.5rem;text-align:left;">
+      <summary style="cursor:pointer;font-size:0.95rem;font-weight:600;color:var(--fg-strong);">Per-item breakdown</summary>
+      <div class="breakdown-list" style="margin-top:0.75rem;display:flex;flex-direction:column;gap:0.55rem;">
+        <% breakdown.forEach((b, i) => { %>
+          <div class="breakdown-item" style="padding:0.75rem 0.85rem;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-card);<%= b.is_correct ? 'border-left:3px solid var(--success);' : 'border-left:3px solid var(--danger);' %>">
+            <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem;">
+              <span style="font-size:0.78rem;font-weight:700;color:var(--fg-muted);"><%= i + 1 %>.</span>
+              <span class="badge <%= b.is_correct ? 'correct' : 'danger' %>"><%= b.is_correct ? 'Correct' : 'Missed' %></span>
+              <span class="badge"><%= (b.item_type || '').replace(/_/g, ' ') %></span>
+              <span class="muted tiny" style="margin-left:auto;"><%= b.points_awarded %>/<%= b.points_possible %> pts</span>
+            </div>
+            <div style="font-size:0.92rem;font-weight:600;color:var(--fg-strong);margin-bottom:0.4rem;"><%= b.question %></div>
+            <div style="font-size:0.85rem;display:flex;flex-direction:column;gap:0.25rem;">
+              <div>
+                <span style="color:var(--fg-muted);font-size:0.78rem;text-transform:uppercase;letter-spacing:0.05em;">Your answer:</span>
+                <span style="color:<%= b.is_correct ? 'var(--success)' : 'var(--danger)' %>;">
+                  <% if (b.given_text) { %>
+                    <%- b.given_text %>
+                  <% } else { %>
+                    <span class="muted" style="font-style:italic;">(no answer)</span>
+                  <% } %>
+                </span>
+              </div>
+              <% if (!b.is_correct) { %>
+                <div>
+                  <span style="color:var(--fg-muted);font-size:0.78rem;text-transform:uppercase;letter-spacing:0.05em;">Correct answer:</span>
+                  <span style="color:var(--success);font-weight:600;">
+                    <% if (b.correct_text) { %>
+                      <%- b.correct_text %>
+                    <% } else { %>
+                      <span class="muted" style="font-style:italic;">(not set)</span>
+                    <% } %>
+                  </span>
+                </div>
+              <% } %>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+    </details>
+  <% } %>
+
+  <div class="reactions-row" style="justify-content:center;margin-top:1.25rem" data-target-type="result" data-target-id="<%= quiz.id %>">
+    <button type="button" class="reaction-btn like" data-kind="like" aria-label="Helpful">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+      <span class="reaction-count">0</span>
+    </button>
+    <button type="button" class="reaction-btn dislike" data-kind="dislike" aria-label="Not helpful">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>
+      <span class="reaction-count">0</span>
+    </button>
+  </div>
+
+  <div class="cta-row" style="justify-content:center;margin-top:1.5rem">
+    <a href="/practice/<%= quiz.id %>" class="btn btn-primary">Try again</a>
+    <a href="/practice" class="btn btn-outline">Back to quizzes</a>
+  </div>
+</div>
+
+<script>
+  // Wire up the reactions on the result page + load initial counts.
+  (async function () {
+    const row = document.querySelector('.reactions-row[data-target-type="result"]');
+    if (!row) return;
+    try {
+      const r = await fetch(`/api/reactions/counts?target_type=result&target_id=<%= quiz.id %>`).then(r => r.json());
+      if (r.ok) {
+        row.querySelector('.reaction-btn.like .reaction-count').textContent = String(r.likes || 0);
+        row.querySelector('.reaction-btn.dislike .reaction-count').textContent = String(r.dislikes || 0);
+        if (r.mine === 'like') row.querySelector('.reaction-btn.like').classList.add('active');
+        if (r.mine === 'dislike') row.querySelector('.reaction-btn.dislike').classList.add('active');
+      }
+    } catch {}
+  })();
+</script>
+<script>
+  // Inline reaction click handler (the partial's IIFE also handles it, but
+  // include this in case the partial wasn't loaded before this view).
+  if (!window.__reactionsWired) {
+    window.__reactionsWired = true;
+    document.addEventListener('click', async (e) => {
+      const btn = e.target.closest('.reaction-btn');
+      if (!btn) return;
+      const row = btn.closest('.reactions-row');
+      if (!row) return;
+      const targetType = row.dataset.targetType;
+      const targetId = row.dataset.targetId;
+      const kind = btn.dataset.kind;
+      try {
+        const r = await fetch('/api/reactions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ target_type: targetType, target_id: targetId, kind })
+        }).then(r => r.json());
+        if (r.ok) {
+          row.querySelector('.reaction-btn.like .reaction-count').textContent = String(r.likes || 0);
+          row.querySelector('.reaction-btn.dislike .reaction-count').textContent = String(r.dislikes || 0);
+          row.querySelector('.reaction-btn.like').classList.toggle('active', r.mine === 'like');
+          row.querySelector('.reaction-btn.dislike').classList.toggle('active', r.mine === 'dislike');
+        } else {
+          toast.error(r.error || 'Could not save your reaction.');
+        }
+      } catch (err) {
+        toast.error('Network error.');
+      }
+    });
+  }
+</script>

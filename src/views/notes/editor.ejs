@@ -1,0 +1,136 @@
+<div class="page-head">
+  <p class="kicker">Notes Editor</p>
+  <h1>Manage notes &amp; units</h1>
+  <p class="muted">Add units and parts. Each part is built from dynamic content blocks. Drag the handle to reorder.</p>
+</div>
+
+<div class="cta-row">
+  <button class="btn btn-primary" id="new-unit-btn">
+    <%- include('../partials/icon', { name: 'plus', size: 16 }) %>
+    <span>New unit</span>
+  </button>
+</div>
+
+<div id="units-list" class="unit-list">
+  <% units.forEach(u => { %>
+    <div class="unit-card" data-unit-id="<%= u.id %>">
+      <div class="unit-card-head">
+        <span class="card-icon-wrap"><%- include('../partials/icon', { name: 'book', size: 22 }) %></span>
+        <div class="unit-card-meta">
+          <span class="card-kicker">Unit <%= u.number %></span>
+          <h3><%= u.title %></h3>
+          <p class="muted"><%= u.description %></p>
+        </div>
+        <div class="unit-card-actions">
+          <button class="btn btn-sm btn-outline edit-unit-btn" data-unit='<%- JSON.stringify({ id: u.id, number: u.number, title: u.title, description: u.description, icon: u.icon }) %>'>
+            <%- include('../partials/icon', { name: 'pencil', size: 14 }) %>
+            <span>Edit unit</span>
+          </button>
+          <button class="btn btn-sm btn-outline add-part-btn" data-unit-id="<%= u.id %>">
+            <%- include('../partials/icon', { name: 'plus', size: 14 }) %>
+            <span>Part</span>
+          </button>
+          <button class="icon-btn delete-unit-btn" data-unit-id="<%= u.id %>" title="Delete unit" aria-label="Delete unit">
+            <%- include('../partials/icon', { name: 'trash', size: 16 }) %>
+          </button>
+        </div>
+      </div>
+      <div class="parts-list" data-unit-id="<%= u.id %>">
+        <% u.parts.forEach((p, i) => { %>
+          <div class="part-row" data-part-id="<%= p.id %>">
+            <span class="part-idx"><%= i + 1 %></span>
+            <a href="#" class="edit-part-link" data-part-id="<%= p.id %>" data-unit-id="<%= u.id %>"><%= p.title %></a>
+            <span class="muted"><%= p.blocks.length %> blocks</span>
+            <button class="icon-btn edit-part-btn" data-part-id="<%= p.id %>" data-unit-id="<%= u.id %>" title="Edit part" aria-label="Edit part">
+              <%- include('../partials/icon', { name: 'pencil', size: 14 }) %>
+            </button>
+            <button class="icon-btn delete-part-btn" data-part-id="<%= p.id %>" title="Delete part" aria-label="Delete part">
+              <%- include('../partials/icon', { name: 'trash', size: 14 }) %>
+            </button>
+          </div>
+        <% }) %>
+      </div>
+    </div>
+  <% }) %>
+</div>
+
+<!-- Editor dialog -->
+<div id="editor-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="editor-title">
+  <div class="modal-content wide">
+    <header class="modal-head">
+      <h2 id="editor-title">Edit part</h2>
+      <button class="icon-btn" id="editor-close" aria-label="Close"><%- include('../partials/icon', { name: 'x', size: 18 }) %></button>
+    </header>
+    <div class="modal-body">
+      <label>Part title</label>
+      <input type="text" id="part-title" />
+
+      <label>Content blocks <span class="muted small">(drag the handle to reorder)</span></label>
+      <div class="blocks-editor" id="blocks-editor"></div>
+
+      <div class="block-picker" id="block-picker" role="group" aria-label="Add a block">
+        <button type="button" class="block-picker-btn" data-kind="paragraph"><%- include('../partials/icon', { name: 'paragraph', size: 16 }) %> <span>Paragraph</span></button>
+        <button type="button" class="block-picker-btn" data-kind="heading"><%- include('../partials/icon', { name: 'heading', size: 16 }) %> <span>Heading</span></button>
+        <button type="button" class="block-picker-btn" data-kind="bullet"><%- include('../partials/icon', { name: 'list_bullet', size: 16 }) %> <span>Bullets</span></button>
+        <button type="button" class="block-picker-btn" data-kind="numbered"><%- include('../partials/icon', { name: 'list_numbered', size: 16 }) %> <span>Numbered</span></button>
+        <button type="button" class="block-picker-btn" data-kind="image"><%- include('../partials/icon', { name: 'image', size: 16 }) %> <span>Image</span></button>
+        <button type="button" class="block-picker-btn" data-kind="divider"><%- include('../partials/icon', { name: 'divider', size: 16 }) %> <span>Divider</span></button>
+        <button type="button" class="block-picker-btn" data-kind="callout"><%- include('../partials/icon', { name: 'callout', size: 16 }) %> <span>Callout</span></button>
+      </div>
+    </div>
+    <footer class="modal-foot">
+      <button class="btn btn-outline" id="editor-cancel">Cancel</button>
+      <button class="btn btn-primary" id="editor-save">
+        <%- include('../partials/icon', { name: 'save', size: 16 }) %>
+        <span>Save part</span>
+      </button>
+    </footer>
+  </div>
+</div>
+
+<!-- Block editor modal (rich form for each block kind) -->
+<div id="block-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="block-modal-title">
+  <div class="modal-content">
+    <header class="modal-head">
+      <h2 id="block-modal-title">Edit block</h2>
+      <button class="icon-btn" id="block-close" aria-label="Close"><%- include('../partials/icon', { name: 'x', size: 18 }) %></button>
+    </header>
+    <div class="modal-body" id="block-modal-body"></div>
+    <footer class="modal-foot">
+      <button class="btn btn-outline" id="block-cancel">Cancel</button>
+      <button class="btn btn-primary" id="block-save">
+        <%- include('../partials/icon', { name: 'save', size: 16 }) %>
+        <span>Save block</span>
+      </button>
+    </footer>
+  </div>
+</div>
+
+<!-- New unit dialog -->
+<div id="unit-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="unit-modal-title">
+  <div class="modal-content">
+    <header class="modal-head"><h2 id="unit-modal-title">New unit</h2><button class="icon-btn" id="unit-close" aria-label="Close"><%- include('../partials/icon', { name: 'x', size: 18 }) %></button></header>
+    <div class="modal-body">
+      <label>Number</label><input id="nu-number" placeholder="05" />
+      <label>Title</label><input id="nu-title" placeholder="DNA Replication" />
+      <label>Description</label><textarea id="nu-desc" rows="2"></textarea>
+    </div>
+    <footer class="modal-foot"><button class="btn btn-outline" id="unit-cancel">Cancel</button><button class="btn btn-primary" id="unit-create"><%- include('../partials/icon', { name: 'plus', size: 16 }) %> <span>Create unit</span></button></footer>
+  </div>
+</div>
+
+<!-- Edit unit dialog (metadata: title, number, icon, description) -->
+<div id="edit-unit-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="edit-unit-title">
+  <div class="modal-content">
+    <header class="modal-head"><h2 id="edit-unit-title">Edit unit</h2><button class="icon-btn" id="eu-close" aria-label="Close"><%- include('../partials/icon', { name: 'x', size: 18 }) %></button></header>
+    <div class="modal-body">
+      <input type="hidden" id="eu-id" />
+      <label>Number</label><input id="eu-number" placeholder="05" />
+      <label>Title</label><input id="eu-title" />
+      <label>Description</label><textarea id="eu-desc" rows="2"></textarea>
+    </div>
+    <footer class="modal-foot"><button class="btn btn-outline" id="eu-cancel">Cancel</button><button class="btn btn-primary" id="eu-save"><%- include('../partials/icon', { name: 'save', size: 16 }) %> <span>Save unit</span></button></footer>
+  </div>
+</div>
+
+<script src="/js/notes-editor.js"></script>

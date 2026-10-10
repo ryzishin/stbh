@@ -1,0 +1,63 @@
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <img src="/assets/stem-logo.png" alt="STEM logo" class="brand-logo-img" />
+    <div>
+      <div class="brand-text">STEM Tesla <strong>BioHub</strong></div>
+      <div class="sidebar-sub">Dangcagan NHS · Biology 2</div>
+    </div>
+    <button class="icon-btn sidebar-close" id="sidebar-close" aria-label="Close menu" title="Close menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <nav class="sidebar-nav" aria-label="Sections">
+    <% const role = user.role; %>
+    <% if (role === 'admin') { %>
+      <a href="/admin" class="<%= path === '/admin' ? 'active' : '' %>" aria-current="<%= path === '/admin' ? 'page' : 'false' %>"><%- include('icon', { name: 'dashboard', size: 18 }) %> <span>Dashboard</span></a>
+      <a href="/admin/accounts" class="<%= path.startsWith('/admin/accounts') ? 'active' : '' %>"><%- include('icon', { name: 'users', size: 18 }) %> <span>Accounts</span></a>
+      <a href="/admin/live-monitor" class="<%= path.startsWith('/admin/live-monitor') ? 'active' : '' %>"><%- include('icon', { name: 'broadcast', size: 18 }) %> <span>Live Monitor</span></a>
+      <a href="/admin/scores" class="<%= path.startsWith('/admin/scores') ? 'active' : '' %>"><%- include('icon', { name: 'history', size: 18 }) %> <span>Scores &amp; History</span></a>
+      <a href="/admin/host-live" class="<%= path.startsWith('/admin/host-live') ? 'active' : '' %>"><%- include('icon', { name: 'radio', size: 18 }) %> <span>Host Live Test</span></a>
+      <a href="/admin/live-editor" class="<%= path.startsWith('/admin/live-editor') ? 'active' : '' %>"><%- include('icon', { name: 'edit', size: 18 }) %> <span>Edit Live Test</span></a>
+      <a href="/subadmin/notes" class="<%= path.startsWith('/subadmin/notes') ? 'active' : '' %>"><%- include('icon', { name: 'pencil', size: 18 }) %> <span>Edit Notes</span></a>
+      <a href="/subadmin/practice" class="<%= path.startsWith('/subadmin/practice') ? 'active' : '' %>"><%- include('icon', { name: 'edit', size: 18 }) %> <span>Edit Practice</span></a>
+      <a href="/subadmin/flashcards" class="<%= path.startsWith('/subadmin/flashcards') ? 'active' : '' %>"><%- include('icon', { name: 'card', size: 18 }) %> <span>Edit Flashcards</span></a>
+      <a href="/notes" class="<%= path.startsWith('/notes') && !path.startsWith('/subadmin/notes') ? 'active' : '' %>"><%- include('icon', { name: 'book', size: 18 }) %> <span>View Notes</span></a>
+      <a href="/leaderboard" class="<%= path.startsWith('/leaderboard') ? 'active' : '' %>"><%- include('icon', { name: 'trophy', size: 18 }) %> <span>Leaderboard</span></a>
+      <a href="/classmates" class="<%= path.startsWith('/classmates') ? 'active' : '' %>"><%- include('icon', { name: 'users', size: 18 }) %> <span>Students</span></a>
+      <a href="/admin/settings" class="<%= path.startsWith('/admin/settings') ? 'active' : '' %>"><%- include('icon', { name: 'gear', size: 18 }) %> <span>Settings</span></a>
+    <% } else if (role === 'subadmin') { %>
+      <a href="/subadmin/notes" class="<%= path.startsWith('/subadmin/notes') ? 'active' : '' %>"><%- include('icon', { name: 'pencil', size: 18 }) %> <span>Edit Notes</span></a>
+      <a href="/subadmin/practice" class="<%= path.startsWith('/subadmin/practice') ? 'active' : '' %>"><%- include('icon', { name: 'edit', size: 18 }) %> <span>Edit Practice</span></a>
+      <a href="/subadmin/flashcards" class="<%= path.startsWith('/subadmin/flashcards') ? 'active' : '' %>"><%- include('icon', { name: 'card', size: 18 }) %> <span>Edit Flashcards</span></a>
+      <a href="/notes" class="<%= path.startsWith('/notes') ? 'active' : '' %>"><%- include('icon', { name: 'book', size: 18 }) %> <span>Read Notes</span></a>
+      <a href="/practice" class="<%= path.startsWith('/practice') ? 'active' : '' %>"><%- include('icon', { name: 'brain', size: 18 }) %> <span>Practice Quizzes</span></a>
+      <a href="/flashcards" class="<%= path.startsWith('/flashcards') ? 'active' : '' %>"><%- include('icon', { name: 'bolt', size: 18 }) %> <span>Flashcards</span></a>
+      <a href="/leaderboard" class="<%= path.startsWith('/leaderboard') ? 'active' : '' %>"><%- include('icon', { name: 'trophy', size: 18 }) %> <span>Leaderboard</span></a>
+      <a href="/classmates" class="<%= path.startsWith('/classmates') ? 'active' : '' %>"><%- include('icon', { name: 'users', size: 18 }) %> <span>Classmates</span></a>
+    <% } else { %>
+      <a href="/today" class="<%= path === '/today' ? 'active' : '' %>"><%- include('icon', { name: 'dashboard', size: 18 }) %> <span>Today</span></a>
+      <a href="/notes" class="<%= path.startsWith('/notes') ? 'active' : '' %>"><%- include('icon', { name: 'book', size: 18 }) %> <span>Notes</span></a>
+      <a href="/practice" class="<%= path.startsWith('/practice') ? 'active' : '' %>"><%- include('icon', { name: 'brain', size: 18 }) %> <span>Practice Quizzes</span></a>
+      <a href="/flashcards" class="<%= path.startsWith('/flashcards') ? 'active' : '' %>"><%- include('icon', { name: 'bolt', size: 18 }) %> <span>Flashcards</span></a>
+      <a href="/leaderboard" class="<%= path.startsWith('/leaderboard') ? 'active' : '' %>"><%- include('icon', { name: 'trophy', size: 18 }) %> <span>Leaderboard</span></a>
+      <a href="/classmates" class="<%= path.startsWith('/classmates') ? 'active' : '' %>"><%- include('icon', { name: 'users', size: 18 }) %> <span>Classmates</span></a>
+    <% } %>
+  </nav>
+  <a href="/profile" class="sidebar-user" title="View your profile">
+    <% const avatarUrl = user.avatar_url; const initials = (user.username || user.name || '').split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase(); %>
+    <div class="avatar avatar-sm<%= avatarUrl ? ' has-img' : '' %>"<%= avatarUrl ? '' : ' style="background: linear-gradient(135deg, oklch(0.65 0.18 '+(user.avatar_color||152)+'), oklch(0.55 0.16 '+((user.avatar_color||152)+30)+'));"' %>>
+      <% if (avatarUrl) { %><img src="<%= avatarUrl %>" alt="<%= user.username || user.name %>" /><% } else { %><%= initials %><% } %>
+    </div>
+    <div class="sidebar-user-info">
+      <div class="sidebar-user-name"><%= user.username || user.name %></div>
+      <div class="sidebar-user-role"><%= user.role %> · <%= user.uid %></div>
+    </div>
+    <%- include('icon', { name: 'gear', size: 16, cls: 'sidebar-user-edit' }) %>
+  </a>
+  <form method="post" action="/logout" class="sidebar-logout-form">
+    <button type="submit" class="btn btn-outline btn-sm w-full" title="Sign out" aria-label="Sign out">
+      <%- include('icon', { name: 'logout', size: 16 }) %>
+      <span>Sign out</span>
+    </button>
+  </form>
+</aside>

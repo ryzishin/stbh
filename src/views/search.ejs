@@ -1,0 +1,111 @@
+<div class="page-head">
+  <p class="kicker">Search</p>
+  <h1><%= query ? `Results for "${query}"` : 'Search BioHub' %></h1>
+  <p class="muted">Looks across notes, flashcards, and quiz items. Try "mitochondria" or "DNA".</p>
+</div>
+
+<form action="/search" method="get" class="mb-2">
+  <input type="search" name="q" value="<%= query %>" placeholder="Search notes, flashcards, quizzes…" autofocus style="font-size:1.05rem; padding:0.85rem 1rem;" />
+</form>
+
+<% if (!query) { %>
+  <div class="empty-state">
+    <p>Type something to search.</p>
+    <p class="muted small">Tip: press <kbd style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; padding: 0.1rem 0.35rem; border-radius: 4px; background: var(--bg-soft); border: 1px solid var(--border-strong);">⌘K</kbd> anywhere to open the search palette.</p>
+  </div>
+<% } else { %>
+  <% const grp = groups || {};
+     const total = (grp.units || []).length + (grp.blocks || []).length + (grp.cards || []).length + (grp.quiz_items || []).length;
+  %>
+  <% if (total === 0) { %>
+    <div class="empty-state">
+      <p>No results for "<%= query %>".</p>
+      <p class="muted small">Check your spelling, or try a broader term.</p>
+    </div>
+  <% } else { %>
+    <p class="muted small mb-2"><%= total %> result<%= total === 1 ? '' : 's' %> across <%= (grp.units || []).length %> units, <%= (grp.blocks || []).length %> note sections, <%= (grp.cards || []).length %> flashcards, <%= (grp.quiz_items || []).length %> quiz items.</p>
+
+    <% if ((grp.units || []).length > 0) { %>
+      <div class="card mb-2">
+        <div class="card-head"><h3>Units</h3><span class="badge"><%= grp.units.length %></span></div>
+        <div class="participant-list">
+          <% grp.units.forEach(u => { %>
+            <a href="/notes/<%= u.slug %>" class="participant-row clickable">
+              <div class="card-icon-wrap" style="width:32px;height:32px"><%- include('partials/icon', { name: 'book', size: 16 }) %></div>
+              <div class="flex-1">
+                <strong><%= u.title %></strong>
+                <div class="muted tiny"><%= u.description %></div>
+              </div>
+              <span class="badge">Unit <%= u.number %></span>
+            </a>
+          <% }) %>
+        </div>
+      </div>
+    <% } %>
+
+    <% if ((grp.blocks || []).length > 0) { %>
+      <div class="card mb-2">
+        <div class="card-head"><h3>Note sections</h3><span class="badge"><%= grp.blocks.length %></span></div>
+        <div class="participant-list">
+          <% grp.blocks.forEach(b => { %>
+            <a href="<%= b.unit_slug ? '/notes/' + b.unit_slug + '#part-' + b.part_id : '/notes' %>" class="participant-row clickable">
+              <div class="card-icon-wrap" style="width:32px;height:32px"><%- include('partials/icon', { name: b.kind === 'heading' ? 'heading' : b.kind === 'image' ? 'image' : 'paragraph', size: 16 }) %></div>
+              <div class="flex-1">
+                <strong><%= (b.text || '').slice(0, 120) %><%= (b.text || '').length > 120 ? '…' : '' %></strong>
+                <div class="muted tiny"><%= b.unit_title || 'Unit' %><% if (b.part_title) { %> · <%= b.part_title %><% } %></div>
+              </div>
+              <span class="badge"><%= b.kind %></span>
+            </a>
+          <% }) %>
+        </div>
+      </div>
+    <% } %>
+
+    <% if ((grp.cards || []).length > 0) { %>
+      <div class="card mb-2">
+        <div class="card-head"><h3>Flashcards</h3><span class="badge"><%= grp.cards.length %></span></div>
+        <div class="participant-list">
+          <% grp.cards.forEach(c => { %>
+            <a href="/flashcards" class="participant-row clickable">
+              <div class="card-icon-wrap" style="width:32px;height:32px"><%- include('partials/icon', { name: 'card', size: 16 }) %></div>
+              <div class="flex-1">
+                <strong><%= c.front %></strong>
+                <div class="muted tiny"><%= (c.back || '').slice(0, 100) %><%= (c.back || '').length > 100 ? '…' : '' %></div>
+              </div>
+              <span class="badge">card</span>
+            </a>
+          <% }) %>
+        </div>
+      </div>
+    <% } %>
+
+    <% if ((grp.quiz_items || []).length > 0) { %>
+      <div class="card mb-2">
+        <div class="card-head"><h3>Quiz items</h3><span class="badge"><%= grp.quiz_items.length %></span></div>
+        <div class="participant-list">
+          <% grp.quiz_items.forEach(it => { %>
+            <div class="participant-row">
+              <div class="card-icon-wrap" style="width:32px;height:32px"><%- include('partials/icon', { name: 'brain', size: 16 }) %></div>
+              <div class="flex-1">
+                <strong><%= it.question %></strong>
+                <div class="muted tiny"><%= it.quiz_title %></div>
+              </div>
+              <span class="badge"><%= it.type.replace(/_/g, ' ') %></span>
+            </div>
+          <% }) %>
+        </div>
+      </div>
+    <% } %>
+  <% } %>
+<% } %>
+
+<script>
+  // Wire up Cmd/Ctrl+K to focus the search input on this page.
+  document.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault();
+      document.querySelector('input[name="q"]')?.focus();
+      document.querySelector('input[name="q"]')?.select();
+    }
+  });
+</script>

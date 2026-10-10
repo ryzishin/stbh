@@ -1,0 +1,408 @@
+<div id="live-test-root">
+  <div class="live-test-head">
+    <span class="live-pulse"></span>
+    <strong>Live test</strong>
+    <span class="muted small" id="timer">Connecting…</span>
+    <span class="badge warn hidden" id="warning-badge" title="Anti-cheat warnings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <span id="warning-count">0</span>
+    </span>
+    <span class="muted small ml-auto" id="join-status">Not joined</span>
+  </div>
+  <div id="quiz-container" class="card">
+    <p class="muted center">Connecting to live session…</p>
+  </div>
+</div>
+
+<script>
+  // ===== Live test client =====
+  //
+  // Persistence strategy:
+  //   1. localStorage holds the student's in-progress answers + the current item index,
+  //      keyed per session. On reload, the UI is restored instantly from this cache.
+  //   2. The server also tracks a per-user draft (in realtime.js), so a reconnect
+  //      mid-session still gets the latest state.
+  //   3. Once an item is submitted, the answer is removed from the local draft
+  //      and recorded in a "submittedItemIds" set — the student cannot re-submit
+  //      the same item, even after a refresh.
+  //
+  // Anti-cheat:
+  //   - At the warning cap, the server emits `live:auto_submit` instead of `live:kicked`.
+  //     The client automatically submits the current answer and shows a toast.
+  //   - Auto-fullscreen is requested the moment the student joins. If they exit
+  //     fullscreen, a warning is recorded.
+
+  const USER_ID = '<%= user.id %>';
+  const LS_KEY = `live-test:${USER_ID}`;
+  const socket = io({ auth: { userId: USER_ID } });
+
+  let session = null;
+  let antiCheat = null;
+  let pollTimer = null;
+  let warningCount = 0;
+  let joined = false;
+  let submittedItemIds = new Set();
+  let currentAnswer = null;
+  let draft = loadDraft();
+
+  function loadDraft() {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (!raw) return { sessionId: null, answers: {}, submittedItemIds: [] };
+      const d = JSON.parse(raw);
+      d.submittedItemIds = d.submittedItemIds || [];
+      d.answers = d.answers || {};
+      return d;
+    } catch { return { sessionId: null, answers: {}, submittedItemIds: [] }; }
+  }
+  function saveDraft() {
+    draft.submittedItemIds = Array.from(submittedItemIds);
+    draft.sessionId = session?.id || draft.sessionId;
+    try { localStorage.setItem(LS_KEY, JSON.stringify(draft)); } catch {}
+  }
+  function clearDraft() {
+    try { localStorage.removeItem(LS_KEY); } catch {}
+    draft = { sessionId: null, answers: {}, submittedItemIds: [] };
+    submittedItemIds = new Set();
+    currentAnswer = null;
+  }
+
+  // ===== Socket events =====
+  socket.on('live:joined', ({ alreadyJoined, submittedItemIds: serverSubmitted, warnings }) => {
+    joined = true;
+    if (Array.isArray(serverSubmitted)) {
+      serverSubmitted.forEach(id => submittedItemIds.add(id));
+    }
+    if (typeof warnings === 'number') {
+      warningCount = warnings;
+      updateWarningBadge();
+    }
+    const joinStatus = document.getElementById('join-status');
+    if (joinStatus) {
+      joinStatus.textContent = alreadyJoined ? 'Resumed' : 'Joined';
+      joinStatus.classList.add('accent');
+    }
+    // Auto-fullscreen on join (best-effort; browsers may require user gesture).
+    requestAutoFullscreen();
+    saveDraft();
+    render();
+  });
+
+  socket.on('live:item_changed', ({ itemIndex }) => {
+    if (session) session.current_item_index = itemIndex;
+    currentAnswer = null;
+    // Tab-title flash + chime when the teacher advances (so backgrounded
+    // students notice). Stops flashing when the tab regains focus.
+    triggerItemChangeAlert();
+    loadSession(); // refetch + re-render
+  });
+
+  socket.on('live:ended', () => {
+    if (pollTimer) clearInterval(pollTimer);
+    const c = document.getElementById('quiz-container');
+    if (c) c.innerHTML = '<div class="empty-state"><p>The live test has ended. Thanks for participating.</p><p class="muted small">Your submitted answers are recorded.</p></div>';
+  });
+
+  socket.on('live:warning', ({ warnings, max, reason }) => {
+    warningCount = warnings;
+    updateWarningBadge();
+    toast.warn(`Warning ${warnings}/${max}: ${reason || 'tab switch detected'}`);
+  });
+
+  socket.on('live:auto_submit', ({ reason }) => {
+    toast.warn(reason || 'Auto-submitting your answer.');
+    // Submit the current answer (whatever is in the form right now).
+    const it = current();
+    if (it) submitAnswer(it, /*auto*/ true);
+  });
+
+  socket.on('live:submission_ack', ({ itemId }) => {
+    submittedItemIds.add(itemId);
+    saveDraft();
+  });
+
+  socket.on('live:draft_saved', () => { /* ack only */ });
+
+  socket.on('live:kicked', ({ reason }) => {
+    // We don't kick at the warning cap anymore, but keep this handler for
+    // server-side safety (e.g. session ended by admin).
+    if (pollTimer) clearInterval(pollTimer);
+    const c = document.getElementById('quiz-container');
+    if (c) c.innerHTML = `<div class="empty-state"><p class="strong">You were removed from the live test.</p><p class="muted small">${reason || ''}</p></div>`;
+  });
+
+  function updateWarningBadge() {
+    const badge = document.getElementById('warning-badge');
+    const count = document.getElementById('warning-count');
+    if (badge && count) {
+      count.textContent = String(warningCount);
+      badge.classList.toggle('hidden', warningCount === 0);
+    }
+  }
+
+  function current() {
+    if (!session || !session.quiz?.items) return null;
+    return session.quiz.items[session.current_item_index];
+  }
+
+  // ===== Session loading =====
+  async function loadSession() {
+    try {
+      const r = await fetch('/api/live-test/current').then(r => r.json());
+      if (!r || !r.session) {
+        document.getElementById('quiz-container').innerHTML =
+          '<div class="empty-state"><p>No active live test right now.</p><p class="muted small">Check back when your teacher starts one.</p></div>';
+        if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+        return;
+      }
+      const wasFirstLoad = !session;
+      session = r.session;
+      if (!antiCheat && r.anti_cheat) {
+        antiCheat = r.anti_cheat;
+        wireAntiCheat();
+      }
+      // Join the session room (idempotent — server returns 'live:joined' with resume state).
+      socket.emit('live:join', { sessionId: session.id });
+      render();
+      // On first load, kick off the polling (3s).
+      if (wasFirstLoad && !pollTimer) {
+        pollTimer = setInterval(loadSession, 3000);
+      }
+    } catch (err) {
+      // Network blip — try again on next poll.
+    }
+  }
+
+  function render() {
+    const it = current();
+    if (!it) {
+      document.getElementById('quiz-container').innerHTML =
+        '<div class="empty-state"><p>Waiting for the next item…</p></div>';
+      return;
+    }
+    const alreadySubmitted = submittedItemIds.has(it.id);
+    const c = document.getElementById('quiz-container');
+    c.innerHTML = `
+      <div class="quiz-item-head">
+        <span class="badge">Item ${session.current_item_index + 1} of ${session.quiz.items.length}</span>
+        <span class="badge accent">${it.type.replace(/_/g, ' ')}</span>
+        <span class="muted">${it.points} pt${it.points !== 1 ? 's' : ''}</span>
+      </div>
+      <h2 class="quiz-q">${escapeHtml(it.question)}</h2>
+      ${it.image_url ? `<img src="${it.image_url}" class="quiz-img" alt="" />` : ''}
+      ${alreadySubmitted ? renderSubmitted(it) : renderAnswer(it)}
+      ${alreadySubmitted ? '<div class="muted small">You have submitted this item. Waiting for the next one…</div>' : '<div class="quiz-nav"><button class="btn btn-primary" id="submit-answer">Submit answer</button></div>'}
+    `;
+    if (!alreadySubmitted) {
+      // Restore draft answer for this item, if any.
+      const saved = draft.answers[it.id];
+      if (saved) restoreAnswer(it, saved);
+      // Wire up live draft saving.
+      wireDraftSaving(it);
+      document.getElementById('submit-answer')?.addEventListener('click', () => submitAnswer(it));
+    }
+  }
+
+  function renderAnswer(it) {
+    if (it.type === 'multiple_choice' || it.type === 'true_false') {
+      return `<div class="option-list">${it.options.map(o => `
+        <label class="option-row"><input type="radio" name="ans" value="${o.id}" /><span>${escapeHtml(o.text)}</span>${o.image_url ? `<img src="${o.image_url}" class="option-img" alt="" />` : ''}</label>
+      `).join('')}</div>`;
+    }
+    if (it.type === 'identification') return `<input type="text" id="ans-input" class="text-input" placeholder="Type your answer…" autocomplete="off" />`;
+    return `<textarea id="ans-input" class="text-input" rows="4" placeholder="Write your answer…"></textarea>`;
+  }
+
+  function renderSubmitted(it) {
+    const saved = draft.answers[it.id];
+    let display = 'submitted';
+    if (typeof saved === 'string') display = saved.length > 60 ? saved.slice(0, 60) + '…' : saved;
+    else if (saved && typeof saved === 'object') display = JSON.stringify(saved);
+    return `<div class="callout callout-success"><strong>Submitted.</strong> ${display ? `Your answer: <em>${escapeHtml(String(display))}</em>` : ''}</div>`;
+  }
+
+  function restoreAnswer(it, saved) {
+    if (it.type === 'multiple_choice' || it.type === 'true_false') {
+      const sel = document.querySelector(`input[name="ans"][value="${saved}"]`);
+      if (sel) sel.checked = true;
+    } else {
+      const inp = document.getElementById('ans-input');
+      if (inp) inp.value = saved;
+    }
+  }
+
+  function wireDraftSaving(it) {
+    if (it.type === 'multiple_choice' || it.type === 'true_false') {
+      document.querySelectorAll('input[name="ans"]').forEach(input => {
+        input.addEventListener('change', () => {
+          currentAnswer = input.value;
+          draft.answers[it.id] = input.value;
+          saveDraft();
+          socket.emit('live:save_draft', { sessionId: session.id, itemId: it.id, answer: input.value });
+        });
+      });
+    } else {
+      const inp = document.getElementById('ans-input');
+      if (inp) {
+        inp.addEventListener('input', () => {
+          currentAnswer = inp.value;
+          draft.answers[it.id] = inp.value;
+          saveDraft();
+          // Debounce the server save.
+          clearTimeout(window.__draftSaveTimer);
+          window.__draftSaveTimer = setTimeout(() => {
+            socket.emit('live:save_draft', { sessionId: session.id, itemId: it.id, answer: inp.value });
+          }, 800);
+        });
+      }
+    }
+  }
+
+  async function submitAnswer(it, auto = false) {
+    let answer = '';
+    let score = 0;
+    if (it.type === 'multiple_choice' || it.type === 'true_false') {
+      const sel = document.querySelector('input[name="ans"]:checked');
+      if (!sel) {
+        if (auto) {
+          // Auto-submit with no answer (record the attempt).
+        } else {
+          toast.warn('Pick an answer first.');
+          return;
+        }
+      } else {
+        answer = sel.value;
+      }
+    } else {
+      const v = document.getElementById('ans-input')?.value || '';
+      answer = v;
+      if (!v.trim() && !auto) { toast.warn('Type your answer.'); return; }
+    }
+    socket.emit('live:submit', { sessionId: session.id, itemId: it.id, answer, score });
+    draft.answers[it.id] = answer;
+    submittedItemIds.add(it.id);
+    saveDraft();
+    document.getElementById('quiz-container').innerHTML =
+      '<div class="empty-state"><p>Answer submitted. Waiting for the next item…</p></div>';
+    if (auto) toast.success('Your answer was submitted.');
+  }
+
+  // ===== Anti-cheat wiring =====
+  function wireAntiCheat() {
+    if (!antiCheat) return;
+    const ac = antiCheat;
+    if (ac.blockTabSwitch) {
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden && session && joined) {
+          socket.emit('live:anti_cheat_warning', { sessionId: session.id, reason: 'Tab switched' });
+        }
+      });
+    }
+    if (ac.blockCopy) {
+      ['copy', 'cut', 'paste'].forEach(evtName => {
+        document.addEventListener(evtName, (e) => {
+          if (session && joined) {
+            e.preventDefault();
+            toast.warn(`${evtName[0].toUpperCase()}${evtName.slice(1)} is disabled during the live test.`);
+          }
+        });
+      });
+    }
+    if (ac.blockRightClick) {
+      document.addEventListener('contextmenu', (e) => {
+        if (session && joined) e.preventDefault();
+      });
+    }
+    if (ac.requireFullscreen) {
+      // Re-request fullscreen if the student exits it.
+      document.addEventListener('fullscreenchange', () => {
+        if (!document.fullscreenElement && session && joined) {
+          socket.emit('live:anti_cheat_warning', { sessionId: session.id, reason: 'Exited fullscreen' });
+          // Try to re-enter after a brief delay.
+          setTimeout(() => requestAutoFullscreen(), 600);
+        }
+      });
+    }
+  }
+
+  function requestAutoFullscreen() {
+    if (!antiCheat?.requireFullscreen) return;
+    if (document.fullscreenElement) return;
+    try {
+      const p = document.documentElement.requestFullscreen?.();
+      if (p && p.catch) p.catch(() => {});
+    } catch {}
+  }
+
+  function escapeHtml(s) {
+    return String(s || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // ===== Tab-title flash + chime on item change =====
+  // Honors a localStorage sound toggle (set from the Profile page).
+  // Stops flashing the moment the tab regains focus.
+  let titleFlashTimer = null;
+  const originalTitle = document.title;
+  function triggerItemChangeAlert() {
+    // Chime (if enabled in profile).
+    if (localStorage.getItem('stbh:sound') !== 'off') {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        // Two quick rising tones — soft enough to not startle, sharp enough to notice.
+        [880, 1175].forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.frequency.value = freq;
+          osc.type = 'sine';
+          gain.gain.value = 0.0001;
+          osc.connect(gain).connect(ctx.destination);
+          const start = ctx.currentTime + i * 0.12;
+          osc.start(start);
+          gain.gain.setValueAtTime(0.0001, start);
+          gain.gain.exponentialRampToValueAtTime(0.18, start + 0.01);
+          gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.18);
+          osc.stop(start + 0.2);
+        });
+        // Resume the context (Chrome autoplay policy).
+        if (ctx.state === 'suspended') ctx.resume();
+      } catch (e) { /* AudioContext unsupported or blocked — silent fail. */ }
+    }
+
+    // Title flash — only when the tab is hidden. When focused, no flash needed.
+    if (!document.hidden) return;
+    let toggle = false;
+    const itemNum = (session?.current_item_index ?? 0) + 1;
+    if (titleFlashTimer) clearInterval(titleFlashTimer);
+    titleFlashTimer = setInterval(() => {
+      toggle = !toggle;
+      document.title = toggle ? `• Item ${itemNum} — BioHub` : originalTitle;
+    }, 700);
+    // Hard stop after 12 seconds in case the user doesn't return.
+    setTimeout(() => { if (titleFlashTimer) { clearInterval(titleFlashTimer); titleFlashTimer = null; document.title = originalTitle; } }, 12000);
+  }
+  // Stop the title flash the moment the user refocuses the tab.
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && titleFlashTimer) {
+      clearInterval(titleFlashTimer);
+      titleFlashTimer = null;
+      document.title = originalTitle;
+    }
+  });
+
+  // ===== Initial load + polling =====
+  loadSession();
+  pollTimer = setInterval(loadSession, 3000);
+
+  // ===== beforeunload — warn before leaving (does not actually prevent reload,
+  //       but encourages the student to stay. Progress is preserved either way.) =====
+  window.addEventListener('beforeunload', (e) => {
+    if (!session || !joined) return;
+    if (submittedItemIds.size > 0) return; // they have submitted, so reloading is fine
+    e.preventDefault();
+    e.returnValue = '';
+  });
+</script>

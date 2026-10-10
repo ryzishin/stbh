@@ -1,0 +1,64 @@
+<div class="page-head">
+  <p class="kicker">Leaderboard</p>
+  <h1>Top of the class</h1>
+  <p class="muted">Weekly resets every Monday. All-time totals never reset. Click any row to view the student's profile.</p>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <div class="card-head">
+      <h3>This week</h3>
+      <span class="badge live">Resets Monday</span>
+    </div>
+    <% if (!weekly || weekly.length === 0) { %>
+      <p class="muted small">No activity this week yet. Be the first!</p>
+    <% } else { %>
+      <div class="participant-list">
+        <% weekly.forEach((p, i) => {
+          const _pUrl = p.avatar_url;
+          const _pInitials = (p.username || p.name || '').split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase();
+        %>
+          <a href="/u/<%= encodeURIComponent(p.username || p.uid) %>" class="participant-row clickable" title="View <%= p.username || p.name %>'s profile">
+            <div class="badge <%= i === 0 ? 'accent' : '' %>">#<%= i + 1 %></div>
+            <div class="avatar avatar-sm<%= _pUrl ? ' has-img' : '' %>"<%= _pUrl ? '' : ' style="background: linear-gradient(135deg, oklch(0.65 0.18 '+(p.avatar_color || 152)+'), oklch(0.55 0.16 '+((p.avatar_color || 152)+30)+'));"' %>>
+              <% if (_pUrl) { %><img src="<%= _pUrl %>" alt="<%= p.username || p.name %>" /><% } else { %><%= _pInitials %><% } %>
+            </div>
+            <div class="flex-1">
+              <strong><%= p.username || p.name %></strong>
+              <div class="muted tiny"><%= p.streak_days || 0 %>-day streak</div>
+            </div>
+            <span class="badge accent"><%= p.weekly_points || 0 %> pts</span>
+          </a>
+        <% }) %>
+      </div>
+    <% } %>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h3>All-time</h3>
+    </div>
+    <% if (!alltime || alltime.length === 0) { %>
+      <p class="muted small">No activity yet.</p>
+    <% } else { %>
+      <div class="participant-list">
+        <% alltime.forEach((p, i) => {
+          const _pUrl = p.avatar_url;
+          const _pInitials = (p.username || p.name || '').split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase();
+        %>
+          <a href="/u/<%= encodeURIComponent(p.username || p.uid) %>" class="participant-row clickable" title="View <%= p.username || p.name %>'s profile">
+            <div class="badge <%= i === 0 ? 'accent' : '' %>">#<%= i + 1 %></div>
+            <div class="avatar avatar-sm<%= _pUrl ? ' has-img' : '' %>"<%= _pUrl ? '' : ' style="background: linear-gradient(135deg, oklch(0.65 0.18 '+(p.avatar_color || 152)+'), oklch(0.55 0.16 '+((p.avatar_color || 152)+30)+'));"' %>>
+              <% if (_pUrl) { %><img src="<%= _pUrl %>" alt="<%= p.username || p.name %>" /><% } else { %><%= _pInitials %><% } %>
+            </div>
+            <div class="flex-1">
+              <strong><%= p.username || p.name %></strong>
+              <div class="muted tiny"><%= p.streak_days || 0 %>-day streak</div>
+            </div>
+            <span class="badge accent"><%= p.points || 0 %> pts</span>
+          </a>
+        <% }) %>
+      </div>
+    <% } %>
+  </div>
+</div>

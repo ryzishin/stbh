@@ -1,0 +1,197 @@
+<div class="page-head">
+  <p class="kicker admin">Admin Dashboard</p>
+  <h1>Welcome back, <%= (user.username || user.name || 'adviser').split(' ')[0] %></h1>
+  <p class="muted">Monitor your students, host a live test, edit content, and configure class settings &mdash; all from here.</p>
+</div>
+
+<div class="stat-row">
+  <a href="/classmates" class="stat-card stat-link">
+    <div class="stat-icon-row">
+      <%- include('../partials/icon', { name: 'users', size: 22 }) %>
+      <div class="stat-val"><%= studentCount || 0 %></div>
+    </div>
+    <div class="stat-label">Students</div>
+  </a>
+  <a href="/admin/accounts" class="stat-card stat-link">
+    <div class="stat-icon-row">
+      <%- include('../partials/icon', { name: 'shield', size: 22 }) %>
+      <div class="stat-val">Manage</div>
+    </div>
+    <div class="stat-label">Accounts &amp; Roster</div>
+  </a>
+  <div class="stat-card">
+    <div class="stat-icon-row">
+      <%- include('../partials/icon', { name: 'chart', size: 22 }) %>
+      <div class="stat-val"><%= quizCount || 0 %></div>
+    </div>
+    <div class="stat-label">Quizzes</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon-row">
+      <%- include('../partials/icon', { name: 'card', size: 22 }) %>
+      <div class="stat-val"><%= cardCount || 0 %></div>
+    </div>
+    <div class="stat-label">Flashcards</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon-row">
+      <%- include('../partials/icon', { name: activeSession ? 'broadcast' : 'dot_circle', size: 22 }) %>
+      <div class="stat-val"><%= activeSession ? 'Live' : 'Idle' %></div>
+    </div>
+    <div class="stat-label">Live status</div>
+  </div>
+</div>
+
+<% if (activeSession) { %>
+  <div class="card live-banner">
+    <span class="live-pulse"></span>
+    <div>
+      <strong>Live now:</strong> <%= activeSession.quizzes && activeSession.quizzes.title %>
+      <div class="muted small">Item <%= activeSession.current_item_index + 1 %> &middot; <%= activeSession.joined_count %> joined &middot; <%= activeSession.answered_count %> answered</div>
+    </div>
+    <a href="/admin/host-live" class="btn btn-primary">Open host panel</a>
+  </div>
+<% } else { %>
+  <div class="card">
+    <h3>No active session</h3>
+    <p class="muted">Start a live test from the host panel when your class is ready.</p>
+    <a href="/admin/host-live" class="btn btn-primary mt-1">Host live test</a>
+  </div>
+<% } %>
+
+<div class="grid grid-3">
+  <a href="/admin/accounts" class="card card-link">
+    <div class="card-icon-wrap"><%- include('../partials/icon', { name: 'users', size: 22 }) %></div>
+    <h3>Accounts</h3>
+    <p class="muted">Import CSV, reset passwords, add or remove accounts</p>
+  </a>
+  <a href="/admin/live-monitor" class="card card-link">
+    <div class="card-icon-wrap"><%- include('../partials/icon', { name: 'broadcast', size: 22 }) %></div>
+    <h3>Live Monitor</h3>
+    <p class="muted">Real-time activity and submissions</p>
+  </a>
+  <a href="/admin/scores" class="card card-link">
+    <div class="card-icon-wrap"><%- include('../partials/icon', { name: 'history', size: 22 }) %></div>
+    <h3>Scores &amp; History</h3>
+    <p class="muted">Official scores, timestamps, past sessions</p>
+  </a>
+  <a href="/subadmin/notes" class="card card-link">
+    <div class="card-icon-wrap"><%- include('../partials/icon', { name: 'pencil', size: 22 }) %></div>
+    <h3>Edit Notes</h3>
+    <p class="muted">Add units, parts, blocks</p>
+  </a>
+  <a href="/admin/live-editor" class="card card-link">
+    <div class="card-icon-wrap"><%- include('../partials/icon', { name: 'edit', size: 22 }) %></div>
+    <h3>Edit Live Test</h3>
+    <p class="muted">Configure test items</p>
+  </a>
+  <a href="/subadmin/practice" class="card card-link">
+    <div class="card-icon-wrap"><%- include('../partials/icon', { name: 'brain', size: 22 }) %></div>
+    <h3>Edit Practice</h3>
+    <p class="muted">Manage practice quizzes</p>
+  </a>
+  <a href="/subadmin/flashcards" class="card card-link">
+    <div class="card-icon-wrap"><%- include('../partials/icon', { name: 'card', size: 22 }) %></div>
+    <h3>Edit Flashcards</h3>
+    <p class="muted">Add or edit review cards</p>
+  </a>
+  <a href="/admin/settings" class="card card-link">
+    <div class="card-icon-wrap"><%- include('../partials/icon', { name: 'gear', size: 22 }) %></div>
+    <h3>Settings</h3>
+    <p class="muted">Test timing, points, notifications</p>
+  </a>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h3>Student roster &amp; roles</h3>
+    <span class="badge"><%= (students || []).length %> students</span>
+  </div>
+  <p class="muted small">Promote a student to sub-admin to let them edit notes, practice quizzes, and flashcards. Sub-admins cannot host live tests or change settings.</p>
+  <div class="participant-list" id="roster-list">
+    <% (students || []).forEach(p => { %>
+      <a href="/u/<%= encodeURIComponent(p.username || p.uid) %>" class="participant-row clickable" data-user-id="<%= p._id %>" data-name="<%= (p.username || p.name || '').replace(/"/g, '&quot;') %>" title="View <%= p.username || p.name %>'s profile">
+        <% const _pUrl = p.avatar_url; const _pInit = (p.username || p.name || '').split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase(); %>
+        <div class="avatar avatar-sm<%= _pUrl ? ' has-img' : '' %>"<%= _pUrl ? '' : ' style="background: linear-gradient(135deg, oklch(0.65 0.18 '+(p.avatar_color || 152)+'), oklch(0.55 0.16 '+((p.avatar_color || 152)+30)+'));"' %>>
+          <% if (_pUrl) { %><img src="<%= _pUrl %>" alt="<%= p.username || p.name %>" /><% } else { %><%= _pInit %><% } %>
+        </div>
+        <div class="flex-1">
+          <strong><%= p.username || p.name %></strong>
+          <div class="muted small">
+            <span class="badge <%= p.role === 'subadmin' ? 'accent' : '' %>"><%= p.role %></span>
+            <span class="tiny">UID: <%= p.uid %></span>
+          </div>
+        </div>
+        <% if (p.role !== 'admin') { %>
+          <button class="btn btn-sm <%= p.role === 'subadmin' ? 'btn-outline' : 'btn-primary' %> promote-btn"
+                  data-user-id="<%= p._id %>"
+                  data-name="<%= (p.username || p.name || '').replace(/"/g, '&quot;') %>"
+                  data-current-role="<%= p.role %>">
+            <%= p.role === 'subadmin' ? 'Demote to student' : 'Promote to sub-admin' %>
+          </button>
+        <% } %>
+        <%- include('../partials/icon', { name: 'eye', size: 16 }) %>
+      </a>
+    <% }) %>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Recent class activity</h3>
+  <div class="activity-list">
+    <% activity.forEach(ev => { %>
+      <div class="activity-row">
+        <span class="activity-kind kind-<%= ev.kind %>"><%= ev.kind.replace(/_/g, ' ') %></span>
+        <strong><%= ev.user_name %></strong>
+        <span class="muted small"><%= new Date(ev.created_at).toLocaleString() %></span>
+      </div>
+    <% }) %>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('.promote-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      // Prevent the parent <a class="participant-row"> from navigating to /u/:username.
+      e.preventDefault();
+      e.stopPropagation();
+      const userId = btn.dataset.userId;
+      const name = btn.dataset.name;
+      const currentRole = btn.dataset.currentRole;
+      const targetRole = currentRole === 'subadmin' ? 'student' : 'subadmin';
+      const verb = targetRole === 'subadmin' ? 'promote' : 'demote';
+      const ok = await confirmToast({
+        title: `${verb.charAt(0).toUpperCase() + verb.slice(1)} ${name}?`,
+        message: targetRole === 'subadmin'
+          ? 'They will be able to edit notes, practice quizzes, and flashcards. They will NOT be able to host live tests or change settings.'
+          : 'They will lose the ability to edit content. Their existing edits remain.',
+        confirmText: `Yes, ${verb}`,
+        cancelText: 'Cancel',
+        danger: targetRole === 'student',
+      });
+      if (!ok) return;
+      btn.disabled = true;
+      btn.textContent = 'Working…';
+      try {
+        const r = await fetch('/api/admin/promote', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, role: targetRole })
+        });
+        if (r.ok) {
+          toast.success(`${name} is now ${targetRole === 'subadmin' ? 'a sub-admin' : 'a student'}.`);
+          setTimeout(() => location.reload(), 700);
+        } else {
+          const d = await r.json().catch(() => ({}));
+          toast.error(d.error || 'Failed to update role.');
+          btn.disabled = false;
+          btn.textContent = currentRole === 'subadmin' ? 'Demote to student' : 'Promote to sub-admin';
+        }
+      } catch (err) {
+        toast.error('Network error — please try again.');
+        btn.disabled = false;
+        btn.textContent = currentRole === 'subadmin' ? 'Demote to student' : 'Promote to sub-admin';
+      }
+    });
+  });
+</script>

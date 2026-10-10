@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title><%= typeof title !== 'undefined' ? title : 'STEM Tesla BioHub' %> · STEM Tesla BioHub</title>
+  <meta name="description" content="STEM Tesla BioHub — Biology 2 class study hub: notes, practice quizzes, flashcards, live tests, leaderboard." />
+  <meta name="theme-color" content="#0b1220" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="application-name" content="STEM Tesla BioHub" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="BioHub" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <!-- PWA manifest -->
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png" />
+  <link rel="mask-icon" href="/assets/stem-logo.jpeg" color="#e63946" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+  <!-- Toast system loads first so any view inline script can call toast() / confirmToast() / promptToast() -->
+  <script src="/js/toast.js"></script>
+  <!-- Register service worker for offline / installable PWA -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      });
+    }
+  </script>
+</head>
+<body class="<%= locals.user ? 'app-body' : 'guest-body' %>">
+  <% if (locals.user) { %>
+    <%- include('../partials/sidebar') %>
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+    <main class="app-main">
+      <header class="app-topbar">
+        <button class="icon-btn sidebar-toggle" id="menu-toggle" aria-label="Toggle menu" title="Toggle menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <h1 class="page-title"><%= typeof title !== 'undefined' ? title : 'Dashboard' %></h1>
+        <div class="topbar-right">
+          <% if (locals.activeSession) { %>
+            <span class="live-pill"><span class="dot"></span> Live: <%= activeSession.quizzes && activeSession.quizzes.title ? activeSession.quizzes.title : 'test' %></span>
+          <% } %>
+          <button class="search-trigger" id="search-trigger" type="button" title="Search (Cmd/Ctrl+K)" aria-label="Open search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <span class="search-label">Search</span>
+            <span class="kbd">⌘K</span>
+          </button>
+          <%- include('../partials/notifications') %>
+          <% const _uAvatarUrl = user.avatar_url; const _uInitials = (user.username || user.name || '').split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase(); %>
+          <a href="/profile" class="user-chip" title="Open your profile" aria-label="Open your profile">
+            <div class="avatar avatar-sm<%= _uAvatarUrl ? ' has-img' : '' %>"<%= _uAvatarUrl ? '' : ' style="background: linear-gradient(135deg, oklch(0.65 0.18 '+(user.avatar_color||152)+'), oklch(0.55 0.16 '+((user.avatar_color||152)+30)+'));"' %>>
+              <% if (_uAvatarUrl) { %><img src="<%= _uAvatarUrl %>" alt="<%= user.username || user.name %>" /><% } else { %><%= _uInitials %><% } %>
+            </div>
+            <span class="user-name"><%= (user.username || user.name || 'user').split(' ')[0] %></span>
+          </a>
+        </div>
+      </header>
+      <div class="page-content">
+        <%- body %>
+      </div>
+      <%- include('../partials/footer') %>
+    </main>
+  <% } else { %>
+    <%- body %>
+  <% } %>
+  <% if (locals.user) { %>
+    <script>window.__USER_ID__ = '<%= user._id %>';</script>
+  <% } %>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="/js/app.js"></script>
+  <% if (locals.user) { %><script src="/js/search.js"></script><% } %>
+  <%- typeof extraScripts !== 'undefined' ? extraScripts : '' %>
+</body>
+</html>

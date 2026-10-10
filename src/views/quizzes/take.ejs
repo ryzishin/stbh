@@ -1,0 +1,194 @@
+<a href="/practice" class="back-link"><%- include('../partials/icon', { name: 'arrow_left', size: 16 }) %> <span>Back to quizzes</span></a>
+<%
+  // Persist answers + current item across refreshes. Key per-user-per-quiz so two
+  // students on the same browser don't collide; for a single-user school machine
+  // this also keeps one student's in-progress attempts from wiping another's.
+  const userId = (user && user.id) ? String(user.id) : 'anon';
+  const storeKey = `quiz-draft:${userId}:${quiz.id}`;
+%>
+<form method="post" action="/practice/<%= quiz.id %>/submit" id="quiz-form">
+  <input type="hidden" name="durationSec" id="duration-input" value="0" />
+  <div class="quiz-progress">
+    <span>Item <span id="cur-idx">1</span> of <%= items.length %></span>
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+    <button type="button" class="btn btn-sm btn-outline" id="clear-draft-btn" title="Discard saved progress and start over"><%- include('../partials/icon', { name: 'refresh', size: 14 }) %> <span>Start over</span></button>
+  </div>
+
+  <% items.forEach((it, i) => { %>
+    <div class="quiz-item" data-item-id="<%= it.id %>" style="display: <%= i === 0 ? 'block' : 'none' %>">
+      <div class="quiz-item-head">
+        <span class="badge"><%= it.type.replace(/_/g, ' ') %></span>
+        <span class="muted"><%= it.points %> pt<%= it.points !== 1 ? 's' : '' %></span>
+      </div>
+      <h2 class="quiz-q"><%= it.question %></h2>
+      <% if (it.image_url) { %>
+        <img src="<%= it.image_url %>" alt="" class="quiz-img" />
+      <% } %>
+
+      <% if (it.type === 'multiple_choice' || it.type === 'true_false') { %>
+        <div class="option-list">
+          <% (it.options || []).forEach(o => { %>
+            <label class="option-row">
+              <input type="radio" name="answers[<%= it.id %>]" value="<%= o.id %>" required />
+              <span><%= o.text %></span>
+              <% if (o.image_url) { %><img src="<%= o.image_url %>" alt="" class="option-img" /><% } %>
+            </label>
+          <% }) %>
+        </div>
+      <% } else if (it.type === 'identification') { %>
+        <input type="text" name="answers[<%= it.id %>]" placeholder="Type your answer…" class="text-input" required />
+      <% } else if (it.type === 'open_ended') { %>
+        <textarea name="answers[<%= it.id %>]" placeholder="Write your answer…" rows="4" class="text-input" required></textarea>
+      <% } %>
+
+      <div class="quiz-nav">
+        <% if (i > 0) { %><button type="button" class="btn btn-outline prev-btn">Previous</button><% } %>
+        <% if (i < items.length - 1) { %>
+          <button type="button" class="btn btn-primary next-btn">Next</button>
+        <% } else { %>
+          <button type="submit" class="btn btn-primary">Submit answers</button>
+        <% } %>
+      </div>
+    </div>
+  <% }) %>
+</form>
+
+<script>
+  (function() {
+    const STORE_KEY = '<%= storeKey %>';
+    const items = document.querySelectorAll('.quiz-item');
+    const curIdx = document.getElementById('cur-idx');
+    const progressFill = document.getElementById('progress-fill');
+    const durationInput = document.getElementById('duration-input');
+    const quizId = '<%= quiz.id %>';
+    let idx = 0;
+
+    // ===== Restore saved draft =====
+    function loadDraft() {
+      try {
+        const raw = localStorage.getItem(STORE_KEY);
+        if (!raw) return null;
+        return JSON.parse(raw);
+      } catch { return null; }
+    }
+    function saveDraft() {
+      const draft = {
+        idx,
+        answers: collectAnswers(),
+        startedAt: draftState.startedAt || Date.now(),
+        elapsed: Date.now() - (draftState.startedAt || Date.now()),
+        savedAt: Date.now(),
+      };
+      draftState.startedAt = draft.startedAt;
+      try { localStorage.setItem(STORE_KEY, JSON.stringify(draft)); } catch {}
+    }
+    function collectAnswers() {
+      const out = {};
+      items.forEach((it) => {
+        const id = it.dataset.itemId;
+        const radio = it.querySelector('input[type="radio"]:checked');
+        if (radio) { out[id] = radio.value; return; }
+        const text = it.querySelector('input[type="text"], textarea');
+        if (text && text.value) out[id] = text.value;
+      });
+      return out;
+    }
+    function applyAnswers(answers) {
+      if (!answers) return;
+      items.forEach((it) => {
+        const id = it.dataset.itemId;
+        const v = answers[id];
+        if (!v) return;
+        const radio = it.querySelector(`input[type="radio"][value="${CSS.escape(v)}"]`);
+        if (radio) { radio.checked = true; return; }
+        const text = it.querySelector('input[type="text"], textarea');
+        if (text) text.value = v;
+      });
+    }
+
+    const draftState = { startedAt: null };
+    const draft = loadDraft();
+    if (draft) {
+      // restore — but cap index to items length
+      idx = Math.min(Math.max(0, Number(draft.idx) || 0), items.length - 1);
+      applyAnswers(draft.answers);
+      draftState.startedAt = draft.startedAt;
+      // Re-hydrate elapsed duration
+      if (typeof draft.elapsed === 'number') {
+        durationInput.value = Math.round(draft.elapsed / 1000);
+      }
+      toast.info('Restored your previous progress on this quiz.', { duration: 4000 });
+    } else {
+      draftState.startedAt = Date.now();
+    }
+
+    function show(i) {
+      idx = i;
+      items.forEach((it, j) => it.style.display = j === i ? 'block' : 'none');
+      curIdx.textContent = i + 1;
+      progressFill.style.width = ((i + 1) / items.length * 100) + '%';
+      saveDraft();
+      // Scroll the first input into view for keyboard users
+      const firstInput = items[i].querySelector('input, textarea');
+      if (firstInput) firstInput.focus({ preventScroll: false });
+    }
+    document.querySelectorAll('.next-btn').forEach(b => b.addEventListener('click', () => { if (idx < items.length - 1) show(idx + 1); }));
+    document.querySelectorAll('.prev-btn').forEach(b => b.addEventListener('click', () => { if (idx > 0) show(idx - 1); }));
+
+    // Persist answers as they change
+    items.forEach((it) => {
+      it.querySelectorAll('input, textarea').forEach(el => {
+        el.addEventListener('input', saveDraft);
+        el.addEventListener('change', saveDraft);
+      });
+    });
+
+    // Clear draft after successful submit (server will redirect on success)
+    document.getElementById('quiz-form').addEventListener('submit', () => {
+      try { localStorage.removeItem(STORE_KEY); } catch {}
+    });
+
+    // ===== Clear draft button =====
+    document.getElementById('clear-draft-btn').addEventListener('click', async () => {
+      const ok = await confirmToast({
+        title: 'Start over?',
+        message: 'This will discard your saved answers for this quiz and reset you to question 1.',
+        confirmText: 'Start over',
+        cancelText: 'Cancel',
+        danger: true,
+      });
+      if (!ok) return;
+      try { localStorage.removeItem(STORE_KEY); } catch {}
+      // reset UI
+      items.forEach((it) => {
+        it.querySelectorAll('input[type="radio"]').forEach(r => r.checked = false);
+        it.querySelectorAll('input[type="text"], textarea').forEach(t => t.value = '');
+      });
+      draftState.startedAt = Date.now();
+      durationInput.value = 0;
+      show(0);
+      toast.success('Started over.');
+    });
+
+    // ===== Duration ticker (continues from restored elapsed) =====
+    const start = Date.now() - (Number(durationInput.value) * 1000);
+    setInterval(() => { durationInput.value = Math.round((Date.now() - start) / 1000); }, 1000);
+
+    // ===== Initial paint =====
+    show(idx);
+
+    // ===== Warn before unload if there are unsaved answers =====
+    let submitting = false;
+    document.getElementById('quiz-form').addEventListener('submit', () => { submitting = true; });
+    window.addEventListener('beforeunload', (e) => {
+      if (submitting) return;
+      const a = collectAnswers();
+      if (Object.keys(a).length === 0) return;
+      // Save draft one more time before leaving (just in case)
+      saveDraft();
+      // Modern browsers ignore the custom message — they show a generic prompt.
+      e.preventDefault();
+      e.returnValue = '';
+    });
+  })();
+</script>

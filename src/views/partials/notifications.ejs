@@ -1,0 +1,175 @@
+<!-- Notifications bell — included from layouts/main.ejs topbar -->
+<div class="notif-bell" id="notif-bell">
+  <button type="button" class="icon-btn notif-bell-btn" id="notif-bell-btn" aria-label="Notifications" title="Notifications">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    <span class="notif-badge hidden" id="notif-badge">0</span>
+  </button>
+  <div class="notif-dropdown hidden" id="notif-dropdown" role="dialog" aria-label="Notifications">
+    <div class="notif-dropdown-head">
+      <strong>Notifications</strong>
+      <button type="button" class="btn-text" id="notif-mark-all">Mark all read</button>
+    </div>
+    <div class="notif-dropdown-body" id="notif-list">
+      <p class="muted small center" style="padding:1rem">Loading…</p>
+    </div>
+    <div class="notif-dropdown-foot">
+      <span class="muted small" id="notif-empty-msg">You're all caught up.</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== Notifications bell — initialized from app.js after DOM is ready =====
+(function() {
+  if (window.__notifInit) return;
+  window.__notifInit = true;
+
+  let opened = false;
+  let lastUnreadCount = 0;
+
+  async function refreshNotifications() {
+    try {
+      const r = await fetch('/api/notifications/unread-count');
+      // Bail on non-OK (e.g. 401 when session expired) — don't try to parse as JSON.
+      if (!r.ok) return;
+      const data = await r.json();
+      if (!data || !data.ok) return;
+      const count = data.count || 0;
+      const badge = document.getElementById('notif-badge');
+      const btn = document.getElementById('notif-bell-btn');
+      if (!badge || !btn) return;
+      badge.textContent = String(count);
+      badge.classList.toggle('hidden', count === 0);
+      btn.classList.toggle('has-unread', count > 0);
+      // If count grew, flash the bell
+      if (count > lastUnreadCount) {
+        btn.classList.add('pulse');
+        setTimeout(() => btn.classList.remove('pulse'), 1500);
+      }
+      lastUnreadCount = count;
+    } catch {}
+  }
+  window.refreshNotifications = refreshNotifications;
+
+  async function loadList() {
+    const list = document.getElementById('notif-list');
+    if (!list) return;
+    list.innerHTML = '<p class="muted small center" style="padding:1rem">Loading…</p>';
+    try {
+      const r = await fetch('/api/notifications');
+      if (!r.ok) {
+        list.innerHTML = '<p class="muted small center" style="padding:1rem">Sign in to view notifications.</p>';
+        return;
+      }
+      const data = await r.json();
+      if (!data || !data.ok) {
+        list.innerHTML = '<p class="muted small center" style="padding:1rem">Failed to load.</p>';
+        return;
+      }
+      const items = data.notifications || [];
+      if (items.length === 0) {
+        list.innerHTML = '<p class="muted small center" style="padding:1.5rem">No notifications yet.</p>';
+        document.getElementById('notif-empty-msg').textContent = 'You\'re all caught up.';
+        return;
+      }
+      list.innerHTML = '';
+      items.forEach(n => {
+        const row = document.createElement('a');
+        row.href = n.link || '#';
+        row.className = 'notif-row' + (n.read_at ? '' : ' unread');
+        if (!n.link) row.addEventListener('click', (e) => { e.preventDefault(); });
+        row.innerHTML = `
+          <div class="notif-row-title">${esc(n.title)}</div>
+          ${n.body ? `<div class="notif-row-body">${esc(n.body)}</div>` : ''}
+          <div class="notif-row-time">${timeAgo(n.created_at)}</div>
+        `;
+        // Auto-mark as read on click
+        row.addEventListener('click', async () => {
+          if (!n.read_at) {
+            try {
+              await fetch(`/api/notifications/${n.id}/read`, { method: 'POST' });
+              row.classList.remove('unread');
+              refreshNotifications();
+            } catch {}
+          }
+        });
+        list.appendChild(row);
+      });
+    } catch {
+      list.innerHTML = '<p class="muted small center" style="padding:1rem">Failed to load.</p>';
+    }
+  }
+
+  function esc(s) {
+    return String(s || '')
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+  function timeAgo(iso) {
+    const d = new Date(iso);
+    const diff = Date.now() - d.getTime();
+    if (diff < 60_000) return 'just now';
+    if (diff < 3_600_000) return Math.floor(diff / 60_000) + 'm ago';
+    if (diff < 86_400_000) return Math.floor(diff / 3_600_000) + 'h ago';
+    if (diff < 7 * 86_400_000) return Math.floor(diff / 86_400_000) + 'd ago';
+    return d.toLocaleDateString();
+  }
+
+  function open() {
+    document.getElementById('notif-dropdown')?.classList.remove('hidden');
+    opened = true;
+    loadList();
+  }
+  function close() {
+    document.getElementById('notif-dropdown')?.classList.add('hidden');
+    opened = false;
+  }
+  function toggle() {
+    if (opened) close(); else open();
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('notif-bell-btn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggle();
+    });
+    document.getElementById('notif-mark-all')?.addEventListener('click', async () => {
+      try {
+        await fetch('/api/notifications/read-all', { method: 'POST' });
+        document.querySelectorAll('.notif-row.unread').forEach(r => r.classList.remove('unread'));
+        refreshNotifications();
+        toast.success('All notifications marked as read.');
+      } catch {}
+    });
+    document.addEventListener('click', (e) => {
+      const bell = document.getElementById('notif-bell');
+      if (opened && bell && !bell.contains(e.target)) close();
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && opened) close(); });
+
+    refreshNotifications();
+    // Poll every 30s for new notifications
+    setInterval(refreshNotifications, 30_000);
+  });
+
+  // ===== Socket.IO live updates =====
+  // The bell listens for `notification:new` events and refreshes the badge live.
+  // (Socket.IO is loaded in main.ejs; this gracefully no-ops if not connected.)
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof io === 'undefined') return;
+    // Re-use the existing socket if one was already opened by the page (live-test, host-live).
+    // Otherwise create a new one just for notifications.
+    let sock = window.__notifSocket;
+    if (!sock) {
+      try { sock = window.__notifSocket = io({ auth: { userId: window.__USER_ID__ } }); } catch { return; }
+    }
+    sock.on('notification:new', (n) => {
+      refreshNotifications();
+      // Show a transient toast too — but only if the dropdown is closed
+      if (!opened && n && n.title) {
+        toast.info(n.title, { duration: 5000 });
+      }
+    });
+  });
+})();
+</script>

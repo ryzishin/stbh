@@ -1,0 +1,103 @@
+<div class="auth-page">
+  <a href="/" class="back-link">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+    Back to home
+  </a>
+  <div class="auth-card">
+    <div class="auth-head">
+      <img src="/assets/stem-logo.png" alt="STEM logo" class="auth-logo" />
+      <h1>Sign in</h1>
+      <p class="muted small">Use your LRN or username to continue.</p>
+    </div>
+
+    <% if (locals.error) { %>
+      <div class="alert alert-error"><%= error %></div>
+    <% } %>
+
+    <% if (locals.mustChangePassword) { %>
+      <div class="alert alert-info">
+        Your password was just reset. Sign in with the temporary password, then set a new one from your profile.
+      </div>
+    <% } %>
+
+    <div class="auth-tabs" role="tablist" aria-label="Sign-in method">
+      <button type="button" class="auth-tab active" data-mode="uid" role="tab" aria-selected="true">LRN / UID</button>
+      <button type="button" class="auth-tab" data-mode="username" role="tab" aria-selected="false">Username</button>
+    </div>
+
+    <form method="post" action="/login" class="auth-form" autocomplete="on" id="login-form">
+      <input type="hidden" name="mode" id="login-mode" value="uid" />
+
+      <label for="login-identifier">
+        <span id="login-identifier-label">LRN or UID</span>
+        <span class="muted tiny" id="login-identifier-hint"></span>
+      </label>
+      <input
+        id="login-identifier"
+        type="text"
+        name="uid"
+        inputmode="text"
+        autocapitalize="off"
+        autocorrect="off"
+        spellcheck="false"
+        placeholder=""
+        required
+        autocomplete="username"
+      />
+
+      <label for="login-password">Password</label>
+      <div class="password-input" id="pw-wrap">
+        <input id="login-password" type="password" name="password" placeholder="Your password" required autocomplete="current-password" />
+        <button type="button" class="pw-toggle" data-toggle-password="login-password" aria-label="Show password" title="Show password">
+          <svg class="pw-show" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          <svg class="pw-hide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+        </button>
+      </div>
+      <button type="submit" class="btn btn-primary w-full">Sign in</button>
+      <p class="form-hint">No sign-up. Forgot your password? Ask your teacher to reset it.</p>
+    </form>
+  </div>
+</div>
+
+<script>
+  // Tab switcher — toggles between UID/LRN mode and Username mode.
+  // Both submit to /login with name="uid"; the server already does case-insensitive
+  // lookup across uid AND username fields, so this is purely UX (label + placeholder + inputmode).
+  (function () {
+    const tabs = document.querySelectorAll('.auth-tab');
+    const label = document.getElementById('login-identifier-label');
+    const hint = document.getElementById('login-identifier-hint');
+    const input = document.getElementById('login-identifier');
+    const modeField = document.getElementById('login-mode');
+    const pwWrap = document.getElementById('pw-wrap');
+
+    function setMode(mode) {
+      tabs.forEach(t => {
+        const active = t.dataset.mode === mode;
+        t.classList.toggle('active', active);
+        t.setAttribute('aria-selected', String(active));
+      });
+      modeField.value = mode;
+      if (mode === 'username') {
+        label.textContent = 'Username';
+        hint.textContent = '(your display name)';
+        input.placeholder = '';
+        input.setAttribute('inputmode', 'text');
+      } else {
+        label.textContent = 'LRN or UID';
+        hint.textContent = '';
+        input.placeholder = '';
+        input.setAttribute('inputmode', 'text');
+      }
+      input.focus();
+    }
+
+    tabs.forEach(t => t.addEventListener('click', () => setMode(t.dataset.mode)));
+
+    // Track whether the password field has text so the eye icon toggles.
+    const pw = document.getElementById('login-password');
+    pw.addEventListener('input', () => {
+      pwWrap.classList.toggle('has-text', pw.value.length > 0);
+    });
+  })();
+</script>

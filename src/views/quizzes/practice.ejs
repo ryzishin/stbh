@@ -1,0 +1,48 @@
+<div class="page-head">
+  <p class="kicker">Practice Quizzes</p>
+  <h1>Review anytime, unlimited retries</h1>
+  <p class="muted">Items &amp; options are randomized each attempt &mdash; practice until it's automatic. Your points feed the leaderboard.</p>
+</div>
+
+<div class="stat-row">
+  <div class="stat-card">
+    <div class="stat-icon-row"><%- include('../partials/icon', { name: 'trophy', size: 22 }) %><div class="stat-val"><%= user.points %></div></div>
+    <div class="stat-label">Total points</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon-row"><%- include('../partials/icon', { name: 'flame', size: 22 }) %><div class="stat-val"><%= user.streak_days %></div></div>
+    <div class="stat-label">Day streak</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon-row"><%- include('../partials/icon', { name: 'brain', size: 22 }) %><div class="stat-val"><%= user.practice_quizzes_taken %></div></div>
+    <div class="stat-label">Quizzes taken</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon-row"><%- include('../partials/icon', { name: 'history', size: 22 }) %><div class="stat-val"><%= attempts.length %></div></div>
+    <div class="stat-label">Your attempts</div>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <% quizzes.forEach(q => {
+    const qAttempts = attempts.filter(a => a.quiz_id === q.id);
+    const best = qAttempts.reduce((m, a) => Math.max(m, a.score), 0);
+  %>
+    <div class="card">
+      <div class="card-head">
+        <h3><%= q.title %></h3>
+        <span class="badge"><%= q.items.length %> items</span>
+      </div>
+      <p class="muted"><%= q.description %></p>
+      <div class="card-meta">
+        <span><%- include('../partials/icon', { name: 'history', size: 13 }) %> <%= qAttempts.length %> attempt<%= qAttempts.length !== 1 ? 's' : '' %></span>
+        <% if (qAttempts.length > 0) { %>
+          <span>&middot; <%- include('../partials/icon', { name: 'trophy', size: 13 }) %> Best: <%= best %>/<%= q.items.length %></span>
+        <% } %>
+      </div>
+      <a href="/practice/<%= q.id %>" class="btn btn-primary w-full mt-1">
+        <%= qAttempts.length > 0 ? 'Practice again' : 'Start practice' %>
+      </a>
+    </div>
+  <% }) %>
+</div>

@@ -1,0 +1,155 @@
+<a href="/admin/accounts" class="back-link">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+  All accounts
+</a>
+
+<div class="student-detail-head">
+  <div class="avatar avatar-lg<%= profile.avatar_url ? ' has-img' : '' %>"<%= profile.avatar_url ? '' : ' style="background: linear-gradient(135deg, oklch(0.65 0.18 '+(profile.avatar_color || 152)+'), oklch(0.55 0.16 '+((profile.avatar_color || 152)+30)+'));"' %>>
+    <% if (profile.avatar_url) { %><img src="<%= profile.avatar_url %>" alt="" /><% } else { %><%= (profile.username || profile.name || '').split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase() %><% } %>
+  </div>
+  <div>
+    <p class="kicker">Student detail</p>
+    <h1><%= profile.username || profile.name %></h1>
+    <div class="muted small"><span class="badge <%= profile.role === 'admin' ? 'accent' : profile.role === 'subadmin' ? 'accent' : '' %>"><%= profile.role %></span> · UID: <%= profile.uid %> · <%= profile.streak_days || 0 %>-day streak · <%= profile.points || 0 %> pts</div>
+  </div>
+  <div class="cta-row" style="margin-left:auto">
+    <a href="/u/<%= encodeURIComponent(profile.username || profile.uid) %>" class="btn btn-outline btn-sm">Public profile</a>
+    <a href="/admin/accounts" class="btn btn-ghost btn-sm">Reset password / Remove</a>
+  </div>
+</div>
+
+<div class="card mb-2">
+  <div class="card-head"><h3>Spaced repetition state</h3><span class="badge"><%= srs.mastery %>% mastery</span></div>
+  <div class="srs-stats">
+    <div class="stat-card">
+      <div class="stat-icon-row"><%- include('../partials/icon', { name: 'bolt', size: 18 }) %><div class="stat-val"><%= srs.due %></div></div>
+      <div class="stat-label">Due now</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon-row"><%- include('../partials/icon', { name: 'check_circle', size: 18 }) %><div class="stat-val"><%= srs.learned %></div></div>
+      <div class="stat-label">Learned</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon-row"><%- include('../partials/icon', { name: 'history', size: 18 }) %><div class="stat-val"><%= srs.reviewed %></div></div>
+      <div class="stat-label">Reviews (all-time)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon-row"><%- include('../partials/icon', { name: 'card', size: 18 }) %><div class="stat-val"><%= srs.totalCards %></div></div>
+      <div class="stat-label">Total cards</div>
+    </div>
+  </div>
+  <div>
+    <div class="muted tiny">Mastery = % of cards with 3+ successful reviews.</div>
+    <div class="mastery-bar"><div class="mastery-bar-fill" style="width: <%= srs.mastery %>%"></div></div>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <div class="card-head">
+      <h3>Weakest items</h3>
+      <span class="badge">most missed</span>
+    </div>
+    <% if (weakestItems.length === 0) { %>
+      <p class="muted small">No item misses yet — either the student hasn't taken any quiz, or they got every item right.</p>
+    <% } else { %>
+      <p class="muted small">Aggregated from all of the student's quiz attempts. Counts how many times each item was answered wrong.</p>
+      <div class="weakest-items-list">
+        <% weakestItems.forEach(w => { %>
+          <div class="weakest-row">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.5rem;margin-bottom:0.25rem;">
+              <strong style="flex:1;min-width:0;"><%= w.question %></strong>
+              <span class="badge danger" style="flex-shrink:0;">×<%= w.miss_count %></span>
+            </div>
+            <div class="meta">
+              <%= w.quiz_title %>
+              · <%= (w.item_type || '').replace(/_/g, ' ') %>
+              <% if (w.attempts > 1) { %>· missed <%= w.miss_count %>/<%= w.attempts %> attempts<% } %>
+              <% if (w.last_miss) { %>· last <%= new Date(w.last_miss).toLocaleDateString() %><% } %>
+            </div>
+            <% if (w.correct_text) { %>
+              <div class="meta" style="margin-top:0.25rem;">
+                <strong style="color: var(--success);">Correct:</strong> <%= w.correct_text %>
+              </div>
+            <% } %>
+            <% if (w.given_text && w.given_text !== w.correct_text) { %>
+              <div class="meta">
+                <strong style="color: var(--danger);">Last given:</strong> <%= w.given_text %>
+              </div>
+            <% } %>
+            <% if (w.quiz_id) { %>
+              <a href="/practice/<%= w.quiz_id %>" class="btn btn-outline btn-sm mt-1">Open quiz</a>
+            <% } %>
+          </div>
+        <% }) %>
+      </div>
+    <% } %>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h3>Weakest quizzes</h3>
+      <span class="badge">lowest scores</span>
+    </div>
+    <% if (weakQuizzes.length === 0) { %>
+      <p class="muted small">No quiz attempts yet.</p>
+    <% } else { %>
+      <div class="weakest-items-list">
+        <% weakQuizzes.forEach(w => { %>
+          <div class="weakest-row">
+            <strong><%= w.quiz_title %></strong>
+            <div class="meta">Scored <%= w.score %>/<%= w.total %> (<%= w.ratio %>%) · <%= new Date(w.taken_at).toLocaleDateString() %></div>
+            <a href="/practice/<%= w.quiz_id %>" class="btn btn-outline btn-sm mt-1">Open quiz</a>
+          </div>
+        <% }) %>
+      </div>
+    <% } %>
+  </div>
+</div>
+
+<div class="card mt-2">
+  <div class="card-head">
+    <h3>Last 7 days of activity</h3>
+    <span class="badge"><%= activities.length %> events</span>
+  </div>
+  <% if (activities.length === 0) { %>
+    <p class="muted small">No activity this week.</p>
+  <% } else { %>
+    <div class="activity-timeline">
+      <% activities.forEach(a => { %>
+        <div class="timeline-row">
+          <span class="kind-pill <%= a.kind === 'warning' ? 'warning' : '' %>"><%= a.kind.replace(/_/g, ' ') %></span>
+          <span><%= a.detail || a.user_name %></span>
+          <span class="time"><%= new Date(a.created_at).toLocaleString() %></span>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+</div>
+
+<div class="card mt-2">
+  <div class="card-head">
+    <h3>Live test warnings</h3>
+    <span class="badge warn"><%= warnings.reduce((s, w) => s + (w.warnings || 0), 0) %> total</span>
+  </div>
+  <% if (warnings.length === 0) { %>
+    <p class="muted small">No anti-cheat warnings. Good behavior.</p>
+  <% } else { %>
+    <div class="weakest-items-list">
+      <% warnings.forEach(w => { %>
+        <div class="weakest-row" style="border-left-color: var(--warn);">
+          <strong><%= w.session_label %></strong>
+          <div class="meta"><%= w.warnings %> warning<%= w.warnings === 1 ? '' : 's' %> · status: <%= w.status %> · <%= new Date(w.last_activity).toLocaleString() %></div>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+</div>
+
+<div class="cta-row mt-2">
+  <a href="/admin/accounts" class="btn btn-outline">
+    <%- include('../partials/icon', { name: 'arrow_left', size: 16 }) %>
+    <span>Back to accounts</span>
+  </a>
+  <a href="/u/<%= encodeURIComponent(profile.username || profile.uid) %>" class="btn btn-ghost">Public profile</a>
+</div>

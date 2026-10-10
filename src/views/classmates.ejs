@@ -1,0 +1,80 @@
+<div class="page-head">
+  <p class="kicker"><%= user.role === 'admin' ? 'Students' : 'Classmates' %></p>
+  <h1 class="<%= user.role === 'admin' ? 'role-students' : '' %>">
+    <% if (user.role === 'admin') { %>The Biology 2 class roster<% } else { %>The Biology 2 class<% } %>
+  </h1>
+  <p class="muted">
+    <% if (user.role === 'admin') { %>
+      Your students and your fellow advisers. The 7-day bar shows daily quiz attempts.
+    <% } else { %>
+      Your fellow classmates and your adviser. The 7-day bar shows daily quiz attempts.
+    <% } %>
+  </p>
+</div>
+
+<% if (adviser) { %>
+  <div class="card mb-2">
+    <a href="/u/<%= encodeURIComponent(adviser.username || adviser.uid) %>" class="classmate-row">
+      <% const _advUrl = adviser.avatar_url; %>
+      <div class="badge accent">#0</div>
+      <div class="avatar avatar-md<%= _advUrl ? ' has-img' : '' %>"<%= _advUrl ? '' : ' style="background: linear-gradient(135deg, oklch(0.65 0.18 '+(adviser.avatar_color || 152)+'), oklch(0.55 0.16 '+((adviser.avatar_color || 152)+30)+'));"' %>>
+        <% if (_advUrl) { %><img src="<%= _advUrl %>" alt="<%= adviser.username || adviser.name %>" /><% } else { %><%= (adviser.username || adviser.name || '').split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase() %><% } %>
+      </div>
+      <div class="flex-1">
+        <strong><%= adviser.username || adviser.name %></strong>
+        <div class="muted tiny"><span class="badge accent">adviser</span><% if (adviser.bio) { %> &middot; <span class="participant-bio"><%- adviser.bio %></span><% } %></div>
+      </div>
+      <span class="last-seen"><%= adviser.last_active_date ? 'active ' + adviser.last_active_date : '—' %></span>
+      <span class="btn btn-outline btn-sm">
+        <%- include('partials/icon', { name: 'eye', size: 14 }) %>
+        <span>View profile</span>
+      </span>
+    </a>
+  </div>
+<% } %>
+
+<% if (students.length === 0) { %>
+  <div class="empty-state">
+    <p>No students yet.</p>
+    <p class="muted small">Import accounts from the admin panel.</p>
+  </div>
+<% } else { %>
+  <% students.forEach(s => {
+    const _sUrl = s.avatar_url;
+    const _sInitials = (s.username || s.name || '').split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase();
+    const spark = s.sparkline || [0,0,0,0,0,0,0];
+    const maxSpark = Math.max(1, ...spark);
+  %>
+    <a href="/u/<%= encodeURIComponent(s.username || s.uid) %>" class="classmate-row" title="View <%= s.username || s.name %>'s profile">
+      <% if (user.role === 'admin') { %>
+        <a href="/admin/student/<%= s.id %>" class="btn btn-sm btn-ghost" title="Open student detail" onclick="event.stopPropagation(); event.preventDefault(); window.location='/admin/student/<%= s.id %>'; return false;">
+          <%- include('partials/icon', { name: 'eye', size: 14 }) %>
+        </a>
+      <% } %>
+      <div class="avatar avatar-md<%= _sUrl ? ' has-img' : '' %>"<%= _sUrl ? '' : ' style="background: linear-gradient(135deg, oklch(0.65 0.18 '+(s.avatar_color || 152)+'), oklch(0.55 0.16 '+((s.avatar_color || 152)+30)+'));"' %>>
+        <% if (_sUrl) { %><img src="<%= _sUrl %>" alt="<%= s.username || s.name %>" /><% } else { %><%= _sInitials %><% } %>
+      </div>
+      <div class="flex-1">
+        <strong><%= s.username || s.name %></strong>
+        <div class="muted tiny">
+          <% if (s.role === 'subadmin') { %><span class="badge accent">sub-admin</span><% } %>
+          <% if (s.bio) { %><span class="participant-bio"><%- s.bio %></span><% } %>
+        </div>
+      </div>
+      <span class="sparkline-cell">
+        <span class="sparkline" title="Daily activity (7 days)">
+          <% spark.forEach((v, i) => { %>
+            <span class="bar <%= v === 0 ? 'zero' : '' %>" style="height: <%= Math.max(2, Math.round((v / maxSpark) * 26)) %>px"></span>
+          <% }) %>
+        </span>
+      </span>
+      <span class="streak-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+        <%= s.streak_days || 0 %>d
+      </span>
+      <span class="badge accent"><%= s.weekly_points || 0 %> pts</span>
+    </a>
+  <% }) %>
+<% } %>
+
+<p class="muted tiny mt-2">Sparkline shows quiz attempts per day for the last 7 days. Hover any row to view the student's public profile.</p>
